@@ -22,13 +22,17 @@ import { PostResponseDto } from './dto/post-response.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { CensorInterceptor } from 'src/common/censor/censor.interceptor';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { UserRole } from 'src/user/schemas/user.schema';
 
 @UseInterceptors(TransformInterceptor)
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.Admin, UserRole.Moderator, UserRole.Writer)
   @UseInterceptors(CensorInterceptor)
   @Post()
   @ResponseMessage('Post created successfully.')
