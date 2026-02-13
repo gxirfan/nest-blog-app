@@ -16,11 +16,24 @@ const flowDocumentToJsonTransformer = (doc, ret) => {
 
 @Schema({
   timestamps: true,
-  toObject: { virtuals: true },
+  versionKey: false, // En temel seviyede __v üretimini kapatır
+  toObject: {
+    virtuals: true,
+    transform: (doc: any, ret: any) => {
+      ret.id = ret._id?.toString();
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    },
+  },
   toJSON: {
     virtuals: true,
-    versionKey: false,
-    transform: flowDocumentToJsonTransformer,
+    transform: (doc: any, ret: any) => {
+      ret.id = ret._id?.toString();
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    },
   },
 })
 export class Flow {

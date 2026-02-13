@@ -5,23 +5,23 @@ import { IUser } from '../interfaces/user.interface';
 export type UserDocument = IUser & Document;
 
 export enum UserRole {
-  Admin = 'admin',
-  User = 'user',
-  Moderator = 'moderator',
-  Writer = 'writer',
+  ADMIN = 'admin',
+  USER = 'user',
+  MODERATOR = 'moderator',
+  WRITER = 'writer',
 }
 
 export enum UserStatus {
-  Active = 'active',
-  Suspended = 'suspended',
-  Banned = 'banned',
+  ACTIVE = 'active',
+  SUSPENDED = 'suspended',
+  BANNED = 'banned',
 }
 
 export enum UserGender {
-  Male = 'male',
-  Female = 'female',
-  Other = 'other',
-  PreferNotToSay = 'prefer_not_to_say',
+  MALE = 'male',
+  FEMALE = 'female',
+  OTHER = 'other',
+  PREFER_NOT_TO_SAY = 'prefer_not_to_say',
 }
 
 const userDocumentToJsonTransformer = (doc, ret) => {
@@ -70,8 +70,14 @@ export class User {
   @Prop({ required: true, trim: true, maxLength: 50 })
   lastName: string;
 
-  @Prop({ required: false, trim: true, default: '', maxLength: 500 })
-  bio?: string;
+  @Prop({
+    required: false,
+    trim: true,
+    default: null,
+    type: String,
+    maxLength: 500,
+  })
+  bio?: string | null;
 
   @Prop({
     required: false,

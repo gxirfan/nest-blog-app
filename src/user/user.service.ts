@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -8,7 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import { User, UserDocument, UserRole } from './schemas/user.schema';
 import * as bcrypt from 'bcrypt';
 import {
   UpdateMeDto,
@@ -211,33 +212,125 @@ export class UserService {
   }
 
   //admin
-  async updateUserByAdmin(
+  async updateUserById(
     id: string,
     user: UpdateUserByAdminDto,
+    adminId: string,
   ): Promise<UserDocument> {
+    // const updatedUser = await this.userModel
+    //   .findByIdAndUpdate(id, user, { new: true })
+    //   .exec();
+    // if (!updatedUser) throw new NotFoundException('User not found');
+    // return updatedUser;
+
+    const existingUser = await this.userModel.findById(id).exec();
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const adminUser = await this.userModel.findById(adminId).exec();
+    if (!adminUser) {
+      throw new NotFoundException('Admin user not found');
+    }
+
+    if (existingUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be modified via this endpoint for security reasons.',
+      );
+    }
+
+    if (
+      adminUser.role !== UserRole.ADMIN &&
+      adminUser.role !== UserRole.MODERATOR
+    ) {
+      throw new ForbiddenException('Only admin or moderator can update user.');
+    }
+
+    if (
+      existingUser.role &&
+      adminUser.role &&
+      adminUser.role === existingUser.role
+    ) {
+      throw new ForbiddenException('You cannot update this user.');
+    }
+
+    if (adminUser.role === UserRole.MODERATOR)
+      if (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR)
+        throw new ForbiddenException('You cannot update this user.');
+
     const updatedUser = await this.userModel
       .findByIdAndUpdate(id, user, { new: true })
       .exec();
+
     if (!updatedUser) throw new NotFoundException('User not found');
+
     return updatedUser;
   }
 
-  async updatePasswordByAdmin(
+  async updatePasswordById(
     id: string,
     newPassword: string,
+    adminId: string,
   ): Promise<UserDocument> {
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(
-        id,
-        { passwordHash: await this.hashPassword(newPassword) },
-        { new: true },
-      )
-      .exec();
-    if (!updatedUser) throw new NotFoundException('User not found');
-    return updatedUser;
+    // const updatedUser = await this.userModel
+    //   .findByIdAndUpdate(
+    //     id,
+    //     { passwordHash: await this.hashPassword(newPassword) },
+    //     { new: true },
+    //   )
+    //   .exec();
+    // if (!updatedUser) throw new NotFoundException('User not found');
+    // return updatedUser;
+
+    const existingUser = await this.userModel.findById(id).exec();
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const adminUser = await this.userModel.findById(adminId).exec();
+    if (!adminUser) {
+      throw new NotFoundException('Admin user not found');
+    }
+
+    if (existingUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be modified via this endpoint for security reasons.',
+      );
+    }
+
+    if (adminUser.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admin can update user password.');
+    }
+
+    existingUser.passwordHash = await this.hashPassword(newPassword);
+
+    return await existingUser.save();
   }
 
-  async deleteUser(id: string): Promise<UserDocument> {
+  async deleteUserById(id: string, adminId: string): Promise<UserDocument> {
+    const existingUser = await this.userModel.findById(id).exec();
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const adminUser = await this.userModel.findById(adminId).exec();
+    if (!adminUser) {
+      throw new NotFoundException('Admin user not found');
+    }
+
+    if (existingUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be modified via this endpoint for security reasons.',
+      );
+    }
+
+    if (adminUser.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admin can delete user.');
+    }
+
     const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
     if (!deletedUser) throw new NotFoundException('User not found');
     return deletedUser;

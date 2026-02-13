@@ -11,6 +11,8 @@ import {
   Res,
   UsePipes,
   ValidationPipe,
+  InternalServerErrorException,
+  HttpException,
 } from '@nestjs/common';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthenticatedGuard } from './guards/authenticated.guard';
@@ -40,6 +42,7 @@ export class AuthController {
   async create(
     @Body() userDto: CreateUserRequestDto,
   ): Promise<UserResponseWithRecoveryCodesDto> {
+    console.log(userDto);
     const user = await this.userService.create(userDto);
     const cleanUserResponse: UserResponseWithRecoveryCodesDto = {
       id: user.id,
@@ -233,6 +236,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password recovered successfully.')
   async recoverPassword(@Body() recoverPasswordDto: RecoverPasswordDto) {
-    await this.authService.recoverPasswordWithRecoveryCode(recoverPasswordDto);
+    try {
+      return await this.authService.recoverPasswordWithRecoveryCode(
+        recoverPasswordDto,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException(
+        'IDENTITY_CRITICAL_FAILURE: Signal lost during recovery.',
+      );
+    }
   }
 }

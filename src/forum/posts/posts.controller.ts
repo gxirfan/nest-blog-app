@@ -32,7 +32,7 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @UseGuards(AuthenticatedGuard, RolesGuard)
-  @Roles(UserRole.Admin, UserRole.Moderator, UserRole.Writer)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
   @UseInterceptors(CensorInterceptor)
   @Post()
   @ResponseMessage('Post created successfully.')
@@ -154,7 +154,8 @@ export class PostsController {
     return PostMapper.toSingleResponseDto(await this.postsService.findOne(id));
   }
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
   @UseInterceptors(CensorInterceptor)
   @Patch(':id')
   @ResponseMessage('Post updated successfully.')

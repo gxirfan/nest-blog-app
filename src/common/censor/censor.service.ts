@@ -3,26 +3,26 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CensorService {
-    constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
-    censor(text: string): string {
-        const rawData = this.configService.getOrThrow<string>('BANNED_WORDS');
-        const bannedWords: string[] = JSON.parse(rawData);
+  censor(text: string): string {
+    const rawData = this.configService.getOrThrow<string>('BANNED_WORDS');
+    const bannedWords: string[] = JSON.parse(rawData);
 
-        if (!text) return text;
-        
-        let censoredText = text;
+    if (!text) return text;
 
-        bannedWords.forEach((word: string) => {
-            if (word.length < 3) return;
+    let censoredText = text;
 
-            const regex = new RegExp(`\\b${word}\\b`, 'gi');
-            
-            const replacement = '**'.repeat(word.length);
+    bannedWords.forEach((word: string) => {
+      if (word.length < 3) return;
 
-            censoredText = censoredText.replace(regex, replacement);
-        });
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
 
-        return censoredText;
-    }
+      const replacement = '**'.repeat(word.length);
+
+      censoredText = censoredText.replace(regex, replacement);
+    });
+
+    return censoredText;
+  }
 }

@@ -20,6 +20,7 @@ import { VoteModule } from './forum/vote/vote.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { NotificationModule } from './notification/notification.module';
 import { FlowModule } from './flow/flow.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -45,7 +46,7 @@ import { FlowModule } from './flow/flow.module';
     EventEmitterModule.forRoot({
       global: true,
     }),
-
+    AdminModule,
     UserModule,
     NotificationModule,
     ForumModule,

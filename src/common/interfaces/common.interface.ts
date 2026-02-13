@@ -1,4 +1,4 @@
 export interface IAuditFields {
-    createdAt: Date;
-    updatedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }

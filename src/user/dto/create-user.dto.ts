@@ -9,15 +9,22 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserGender } from '../schemas/user.schema';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateUserRequestDto {
   @IsString()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   @MinLength(3, { message: 'Username must be at least 3 characters long.' })
   @MaxLength(50, { message: 'Username must be at most 50 characters long.' })
   username: string;
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   nickname?: string;
 
   @IsString()
@@ -34,6 +41,9 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   bio?: string;
 
   @IsEmail()
@@ -44,22 +54,35 @@ export class CreateUserRequestDto {
 
   @IsDate()
   @IsNotEmpty({ message: 'Birth date is required.' })
+  @Type(() => Date)
   birthDate: Date;
 
   @IsString()
   @IsOptional()
-  avatar?: string;
+  @Transform(({ value }: { value: string | null }) =>
+    value === null ? undefined : value,
+  )
+  avatar?: string | null;
 
   @IsString()
   @IsOptional()
-  cover?: string;
+  @Transform(({ value }: { value: string | null }) =>
+    value === null ? undefined : value,
+  )
+  cover?: string | null;
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   location?: string;
 
   @IsEnum(UserGender)
   @IsOptional()
+  @Transform(({ value }: { value: string }) =>
+    value === '' ? undefined : value,
+  )
   gender?: UserGender;
 
   @IsString()

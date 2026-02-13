@@ -20,7 +20,11 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException('you are not logged in');
     }
 
-    if (user.role && user.role === UserRole.Admin) {
+    if (
+      user.role &&
+      (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR) &&
+      user.status === 'active'
+    ) {
       return true;
     } else {
       throw new ForbiddenException('you are not admin');

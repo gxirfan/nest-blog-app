@@ -101,10 +101,10 @@ export class FlowService {
   }
 
   async findAll(
-    queryDto: PaginationQueryDto,
+    paginationQueryDto: PaginationQueryDto,
   ): Promise<IPaginationResponse<FlowDocument>> {
-    const limit = queryDto.limit || 20;
-    const page = queryDto.page || 1;
+    const limit = paginationQueryDto.limit || 20;
+    const page = paginationQueryDto.page || 1;
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -117,10 +117,23 @@ export class FlowService {
         .populate({ path: 'parentId', select: 'content slug' })
         .lean()
         .exec(),
-      this.flowModel.countDocuments(),
+      this.flowModel.countDocuments({ isDeleted: false }),
     ]);
 
-    const safeData = data || [];
+    // const safeData = data || [];
+    const safeData = (data || []).map((item: any) => {
+      return {
+        ...item,
+        id: item._id?.toString(),
+        _id: undefined,
+        __v: undefined,
+      };
+    });
+
+    // return {
+    //   data: safeData,
+    //   meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    // };
 
     return {
       data: safeData as unknown as FlowDocument[],

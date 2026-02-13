@@ -6,19 +6,23 @@ export type ContactMessageDocument = IContactMessage & Document;
 
 const contactMessageDocumentToJsonTransformer = (doc, ret) => {
   if (ret._id?.toString()) {
-      ret.id = ret._id.toString();
+    ret.id = ret._id.toString();
   }
   delete ret._id;
   delete ret.__v;
   return ret;
 };
 
-@Schema({ 
+@Schema({
   timestamps: true,
   toObject: { virtuals: true },
-  toJSON: { virtuals: true, versionKey: false, transform: contactMessageDocumentToJsonTransformer },
+  toJSON: {
+    virtuals: true,
+    versionKey: false,
+    transform: contactMessageDocumentToJsonTransformer,
+  },
 })
-export class ContactMessage{
+export class ContactMessage {
   @Prop({ required: true, maxlength: 100 })
   name: string;
 
@@ -31,8 +35,12 @@ export class ContactMessage{
   @Prop({ required: true, maxlength: 1000 })
   message: string;
 
+  @Prop({ type: String, unique: true, sparse: true })
+  slug: string;
+
   @Prop({ default: false })
   isRead: boolean;
 }
 
-export const ContactMessageSchema = SchemaFactory.createForClass(ContactMessage);
+export const ContactMessageSchema =
+  SchemaFactory.createForClass(ContactMessage);

@@ -21,6 +21,9 @@ import { FlowResponseDto } from './dto/flow-response.dto';
 import { IPaginationResponse } from '../common/interfaces/pagination-response.interface';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
 import { UpdateFlowDto } from './dto/update-flow.dto';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { UserRole } from 'src/user/schemas/user.schema';
 
 @Controller('flow')
 @UseInterceptors(TransformInterceptor)
@@ -28,7 +31,8 @@ export class FlowController {
   constructor(private readonly flowService: FlowService) {}
 
   @Post()
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER, UserRole.USER)
   @UseInterceptors(CensorInterceptor)
   @ResponseMessage('Flow created successfully.')
   async create(
@@ -75,7 +79,8 @@ export class FlowController {
   }
 
   @Patch(':slug')
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER, UserRole.USER)
   @ResponseMessage('Flow updated successfully.')
   async update(
     @Param('slug') slug: string,

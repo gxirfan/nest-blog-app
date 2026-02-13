@@ -21,13 +21,17 @@ import { UpdateTopicDto } from './dto/update-topic.dto';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { CensorInterceptor } from 'src/common/censor/censor.interceptor';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { UserRole } from 'src/user/schemas/user.schema';
 
 @UseInterceptors(TransformInterceptor)
 @Controller('topics')
 export class TopicsController {
   constructor(private readonly topicsService: TopicsService) {}
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
   @UseInterceptors(CensorInterceptor)
   @Post()
   async createTopic(
@@ -103,7 +107,8 @@ export class TopicsController {
     );
   }
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(AuthenticatedGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
   @UseInterceptors(CensorInterceptor)
   @Patch(':id')
   @ResponseMessage('Topic updated successfully.')

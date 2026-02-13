@@ -14,5 +14,6 @@ import { UserModule } from '../user/user.module';
   ],
   controllers: [FlowController],
   providers: [FlowService],
+  exports: [FlowService],
 })
 export class FlowModule {}

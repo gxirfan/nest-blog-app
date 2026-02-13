@@ -8,8 +8,12 @@ import { SessionSerializer } from './session.serializer';
 import { MailerModule } from 'src/mailer/mailer.module';
 
 @Module({
-    controllers: [AuthController],
-    providers: [AuthService, LocalStrategy, SessionSerializer],
-    imports: [UserModule, PassportModule.register({ session: true }), MailerModule]
+  controllers: [AuthController],
+  providers: [AuthService, LocalStrategy, SessionSerializer],
+  imports: [
+    UserModule,
+    PassportModule.register({ session: true }),
+    MailerModule,
+  ],
 })
 export class AuthModule {}

@@ -27,8 +27,14 @@ export class FlowMapper {
       slug: doc.slug || '',
       parentSlug: parentId?.slug || '',
       replyCount: doc.replyCount || 0,
-      createdAt: doc.createdAt.toISOString(),
-      updatedAt: doc.updatedAt.toISOString(),
+      createdAt:
+        doc.createdAt instanceof Date
+          ? doc.createdAt.toISOString()
+          : doc.createdAt,
+      updatedAt:
+        doc.updatedAt instanceof Date
+          ? doc.updatedAt.toISOString()
+          : doc.updatedAt,
     };
   }
 
