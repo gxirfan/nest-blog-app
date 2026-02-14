@@ -43,7 +43,7 @@ async function bootstrap() {
     'PRODUCTION_FRONTEND_URL',
   );
   const frontendUrl =
-    process.env.NODE_ENV === 'production'
+    configService.getOrThrow<string>('NODE_ENV') === 'production'
       ? productionFrontendUrl
       : localFrontendUrl;
 
@@ -70,8 +70,12 @@ async function bootstrap() {
       cookie: {
         maxAge: 3600000 * 12,
         httpOnly: true,
-        secure: false,
+        secure: configService.getOrThrow<string>('NODE_ENV') === 'production',
         sameSite: 'lax',
+        domain:
+          configService.getOrThrow<string>('NODE_ENV') === 'production'
+            ? configService.getOrThrow<string>('PRODUCTION_URL')
+            : undefined,
       },
     }),
   );
