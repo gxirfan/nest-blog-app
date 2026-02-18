@@ -28,20 +28,24 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
+  const configService = app.get(ConfigService);
+
+  if (configService.getOrThrow<string>('NODE_ENV') === 'production')
+    app.set('trust proxy', true);
+
   app.use(json({ limit: '50mb' }));
 
   app.use(urlencoded({ limit: '50mb', extended: true }));
 
-  const configService = app.get(ConfigService);
   const port = configService.getOrThrow<number>('PORT');
   const mongoUrl = configService.getOrThrow<string>('MONGODB_URI');
   const sessionSecret = configService.getOrThrow<string>('SESSION_SECRET');
 
   const localFrontendUrl =
     configService.getOrThrow<string>('LOCAL_FRONTEND_URL');
-  const productionFrontendUrl = configService.getOrThrow<string>(
-    'PRODUCTION_FRONTEND_URL',
-  );
+  const productionFrontendUrl = configService
+    .getOrThrow<string>('PRODUCTION_FRONTEND_URL')
+    .split(',');
   const frontendUrl =
     configService.getOrThrow<string>('NODE_ENV') === 'production'
       ? productionFrontendUrl
