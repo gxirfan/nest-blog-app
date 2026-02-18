@@ -5,17 +5,26 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { UserGender } from '../schemas/user.schema';
 import { Transform, Type } from 'class-transformer';
+import { IsAtLeast18 } from '../validators/min-age-custom.validator';
 
 export class CreateUserRequestDto {
   @IsString()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    // 1. Trim: Remove leading and trailing spaces
+    // 2. If empty string, convert to undefined (per your existing logic)
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
+  @Matches(/^\S+$/, {
+    message: 'Username cannot contain spaces.',
+  })
   @MinLength(3, { message: 'Username must be at least 3 characters long.' })
   @MaxLength(50, { message: 'Username must be at most 50 characters long.' })
   username: string;
@@ -55,6 +64,9 @@ export class CreateUserRequestDto {
   @IsDate()
   @IsNotEmpty({ message: 'Birth date is required.' })
   @Type(() => Date)
+  @IsAtLeast18({
+    message: 'Identity Access Denied: Minimum age requirement is 18.',
+  })
   birthDate: Date;
 
   @IsString()
