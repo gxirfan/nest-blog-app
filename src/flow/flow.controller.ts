@@ -25,8 +25,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UserRole } from 'src/user/schemas/user.schema';
 
-@Controller('flow')
 @UseInterceptors(TransformInterceptor)
+@Controller('flow')
 export class FlowController {
   constructor(private readonly flowService: FlowService) {}
 
@@ -97,6 +97,23 @@ export class FlowController {
     @Query() query: PaginationQueryDto,
   ): Promise<IPaginationResponse<FlowResponseDto>> {
     const result = await this.flowService.findByUsername(username, query);
+    return {
+      data: FlowMapper.toResponseDtoList(result.data),
+      meta: result.meta,
+    };
+  }
+
+  @Get('all/library/my-flows')
+  @ResponseMessage('Flows fetched successfully.')
+  async findAllForLibrary(
+    @Req() req,
+    @Query() query: PaginationQueryDto,
+  ): Promise<IPaginationResponse<FlowResponseDto>> {
+    const result =
+      await this.flowService.findAllByUserIdForLibraryMyFlowPostsPaginated(
+        req.user.id,
+        query,
+      );
     return {
       data: FlowMapper.toResponseDtoList(result.data),
       meta: result.meta,

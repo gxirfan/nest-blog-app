@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { UserResponseDto } from 'src/user/dto/user-response.dto';
 import { UpdateUserByAdminDto } from 'src/user/dto/update-user.dto';
-import { AdminGuard } from './guards/admin.guard';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { TagResponseDto } from 'src/forum/tags/dto/tag-response.dto';
@@ -35,7 +34,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UserRole } from 'src/user/schemas/user.schema';
 
-@UseGuards(AuthenticatedGuard, AdminGuard, RolesGuard)
+@UseGuards(AuthenticatedGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.MODERATOR)
 @UseInterceptors(TransformInterceptor)
 @Controller('admin')

@@ -1,6 +1,7 @@
 import { IAuditFields } from 'src/common/interfaces/common.interface';
 
 export interface IFlow extends IAuditFields {
+  id: string;
   content: string;
   author: string;
   slug: string;

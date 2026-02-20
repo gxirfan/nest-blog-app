@@ -248,4 +248,31 @@ export class FlowService {
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
+
+  async findAllByUserIdForLibraryMyFlowPostsPaginated(
+    userId: string,
+    queryDto: PaginationQueryDto,
+  ) {
+    const { page, limit } = queryDto;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.flowModel
+        .find({ author: new Types.ObjectId(userId), isDeleted: false })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: 'author', select: 'username nickname avatar role' })
+        .lean()
+        .exec(),
+      this.flowModel.countDocuments({
+        author: new Types.ObjectId(userId),
+        isDeleted: false,
+      }),
+    ]);
+    return {
+      data: data as unknown as FlowDocument[],
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 }
