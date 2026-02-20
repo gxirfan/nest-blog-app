@@ -70,7 +70,7 @@ export class UserService {
 
   //read
   async findAll(): Promise<UserDocument[]> {
-    const users = await this.userModel.find().exec();
+    const users = await this.userModel.find().sort({ createdAt: -1 }).exec();
     if (!users) throw new NotFoundException('Users not found');
     if (users.length === 0) throw new NotFoundException('Users not found');
     return users;
