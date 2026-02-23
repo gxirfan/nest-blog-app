@@ -9,7 +9,8 @@ export type NotificationDocument = INotification & Document;
 export enum NotificationType {
   VOTE_UP = 'vote_up',
   VOTE_DOWN = 'vote_down',
-  REPLY = 'reply',
+  FLOW_REPLY = 'flow_reply',
+  POST_REPLY = 'post_reply',
 }
 
 @Schema({ timestamps: true })

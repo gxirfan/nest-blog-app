@@ -2,35 +2,46 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Notification, NotificationDocument, NotificationType } from './schemas/notification.schema';
-import { VoteCreatedEvent, ReplyCreatedEvent, FlowRepliedEvent } from './events/notification.events';
+import {
+  Notification,
+  NotificationDocument,
+  NotificationType,
+} from './schemas/notification.schema';
+import {
+  VoteCreatedEvent,
+  ReplyCreatedEvent,
+  FlowRepliedEvent,
+} from './events/notification.events';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 
 @Injectable()
 export class NotificationService {
   constructor(
-    @InjectModel(Notification.name) private notificationModel: Model<NotificationDocument>,
-  ) { }
+    @InjectModel(Notification.name)
+    private notificationModel: Model<NotificationDocument>,
+  ) {}
 
   // --- EVENT LISTENERS ---
 
   @OnEvent('vote.created')
   async handleVoteCreated(payload: VoteCreatedEvent) {
-
     if (payload.voterId === payload.postOwnerId) return;
 
     // if you want to send notification only for upvote: if (payload.direction !== 1) return;
 
-    const type = payload.direction === 1 ? NotificationType.VOTE_UP : NotificationType.VOTE_DOWN;
+    const type =
+      payload.direction === 1
+        ? NotificationType.VOTE_UP
+        : NotificationType.VOTE_DOWN;
     const action = payload.direction === 1 ? 'upvoted' : 'downvoted';
 
     await this.create({
       recipientId: payload.postOwnerId,
       senderId: payload.voterId,
       type: type,
-      message: `@${payload.voterNickname} ${action} your post: "${payload.postTitle.substring(0, 30)}..."`,
-      targetUrl: `/post/${payload.postSlug}`,
+      message: `@${payload.voterNickname} ${action} your entry: "${payload.postTitle.substring(0, 30)}..."`,
+      targetUrl: payload.postSlug,
       relatedPostId: payload.postId,
     });
   }
@@ -42,24 +53,23 @@ export class NotificationService {
     await this.create({
       recipientId: payload.postOwnerId,
       senderId: payload.replierId,
-      type: NotificationType.REPLY,
-      message: `@${payload.replierNickname} replied to your post: "${payload.parentPostTitle.substring(0, 30)}..."`,
-      targetUrl: `/post/${payload.replySlug}`,
+      type: NotificationType.POST_REPLY,
+      message: `@${payload.replierNickname} replied to your entry: "${payload.parentPostTitle.substring(0, 30)}..."`,
+      targetUrl: payload.replySlug,
       relatedPostId: payload.parentPostId,
     });
   }
 
-  @OnEvent('flow.replied') // 🎯 Yeni Listener
+  @OnEvent('flow.replied')
   async handleFlowReplied(payload: FlowRepliedEvent) {
-    
-    const message = `${payload.replierNickname} replied to your flow: "${payload.parentContent}..."`;
-    
+    const message = `${payload.replierNickname} replied to your thread: "${payload.parentContent}..."`;
+
     await this.create({
       recipientId: payload.recipientId,
       senderId: payload.replierId,
-      type: NotificationType.REPLY,
+      type: NotificationType.FLOW_REPLY,
       message: message,
-      targetUrl: `/flow/${payload.replySlug}`,
+      targetUrl: payload.replySlug,
       relatedPostId: payload.replyId,
     });
   }
@@ -70,7 +80,9 @@ export class NotificationService {
     return this.notificationModel.create(data);
   }
 
-  async getUserNotifications(userId: string): Promise<IPaginationResponse<NotificationDocument>> {
+  async getUserNotifications(
+    userId: string,
+  ): Promise<IPaginationResponse<NotificationDocument>> {
     const data = await this.notificationModel
       .find({ recipientId: userId, isRead: false })
       .sort({ createdAt: -1 })
@@ -79,13 +91,16 @@ export class NotificationService {
 
     const unreadCount = await this.notificationModel.countDocuments({
       recipientId: userId,
-      isRead: false
+      isRead: false,
     });
 
     return { data, meta: { total: unreadCount } };
   }
 
-  async getUserNotificationsPaginated(userId: string, queryDto: PaginationQueryDto): Promise<IPaginationResponse<NotificationDocument>> {
+  async getUserNotificationsPaginated(
+    userId: string,
+    queryDto: PaginationQueryDto,
+  ): Promise<IPaginationResponse<NotificationDocument>> {
     const [data, total] = await Promise.all([
       this.notificationModel
         .find({ recipientId: userId })
@@ -94,17 +109,28 @@ export class NotificationService {
         .limit(queryDto.limit)
         .populate('senderId', 'username nickname avatar')
         .exec(),
-      this.notificationModel.countDocuments({ recipientId: userId })
+      this.notificationModel.countDocuments({ recipientId: userId }),
     ]);
 
-    return { data, meta: { total, page: queryDto.page, limit: queryDto.limit, totalPages: Math.ceil(total / queryDto.limit) } };
+    return {
+      data,
+      meta: {
+        total,
+        page: queryDto.page,
+        limit: queryDto.limit,
+        totalPages: Math.ceil(total / queryDto.limit),
+      },
+    };
   }
 
-  async markAsRead(notificationId: string, userId: string): Promise<NotificationDocument> {
+  async markAsRead(
+    notificationId: string,
+    userId: string,
+  ): Promise<NotificationDocument> {
     const notification = await this.notificationModel.findOneAndUpdate(
       { _id: notificationId, recipientId: userId },
       { $set: { isRead: true } },
-      { new: true }
+      { new: true },
     );
     if (!notification) throw new Error('Notification not found.');
     return notification;
@@ -113,10 +139,13 @@ export class NotificationService {
   async markAllAsRead(userId: string): Promise<NotificationDocument[]> {
     await this.notificationModel.updateMany(
       { recipientId: userId, isRead: false },
-      { $set: { isRead: true } }
+      { $set: { isRead: true } },
     );
 
-    const updatedNotifications = await this.notificationModel.find({ recipientId: userId, isRead: true });
+    const updatedNotifications = await this.notificationModel.find({
+      recipientId: userId,
+      isRead: true,
+    });
     if (!updatedNotifications) throw new Error('Notifications not found.');
     return updatedNotifications;
   }
