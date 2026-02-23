@@ -1,7 +1,11 @@
-import { IsOptional, IsInt, Min } from 'class-validator';
+import { IsOptional, IsInt, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PaginationQueryDto {
+  @IsOptional()
+  @MinLength(2, { message: 'Query must be at least 2 characters long' })
+  q?: string = '';
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
