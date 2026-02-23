@@ -92,7 +92,7 @@ export class PostsService {
         const base64Data = src.replace(/^data:image\/\w+;base64,/, '');
         await fs.writeFile(filePath, base64Data, 'base64');
 
-        const publicUrl = `/public/uploads/posts/${fileName}`;
+        const publicUrl = `/uploads/posts/${fileName}`;
         $(images[i]).attr('src', publicUrl);
       }
     }
@@ -133,7 +133,7 @@ export class PostsService {
 
     writeFileSync(filePath, Buffer.from(base64Image, 'base64'));
 
-    return `/public/uploads/${subFolder}/${fileName}`;
+    return `/uploads/${subFolder}/${fileName}`;
   }
 
   private calculateReadingTime(content: string): number {
