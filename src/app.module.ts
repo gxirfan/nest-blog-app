@@ -21,12 +21,24 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { NotificationModule } from './notification/notification.module';
 import { FlowModule } from './flow/flow.module';
 import { AdminModule } from './admin/admin.module';
+import { SearchModule } from './search/search.module';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
-    CacheModule.register({
-      ttl: 86400000,
+    // CacheModule.register({
+    //   ttl: 86400000,
+    //   isGlobal: true,
+    // }),
+    CacheModule.registerAsync({
       isGlobal: true,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        store: redisStore,
+        host: configService.get<string>('REDIS_HOST') || 'localhost',
+        port: Number(configService.get<string>('REDIS_PORT')) || 6379,
+        ttl: Number(configService.get<string>('REDIS_TTL')),
+      }),
     }),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -54,6 +66,7 @@ import { AdminModule } from './admin/admin.module';
     ContactModule,
     VoteModule,
     FlowModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [

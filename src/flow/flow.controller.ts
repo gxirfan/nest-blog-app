@@ -24,6 +24,7 @@ import { UpdateFlowDto } from './dto/update-flow.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UserRole } from 'src/user/schemas/user.schema';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 
 @UseInterceptors(TransformInterceptor)
 @Controller('flow')
@@ -43,6 +44,7 @@ export class FlowController {
     return FlowMapper.toResponseDto(doc);
   }
 
+  @UseInterceptors(CacheInterceptor)
   @Get()
   @ResponseMessage('All flows fetched successfully.')
   async findAll(
