@@ -49,12 +49,12 @@ export class TagsController {
   }
 
   @Get('all')
-  @UsePipes(new ValidationPipe({ transform: true }))
   @ResponseMessage('All tags fetched successfully.')
   async findAllPaginated(
     @Query() query: PaginationQueryDto,
   ): Promise<IPaginationResponse<TagResponseDto>> {
     const { data, meta } = await this.tagsService.findAllPaginated(query);
+
     return { data: TagMapper.toResponseDto(data), meta };
   }
 

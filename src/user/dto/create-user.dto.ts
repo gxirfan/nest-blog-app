@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { UserGender } from '../schemas/user.schema';
 import { Transform, Type } from 'class-transformer';
-import { IsAtLeast18 } from '../validators/min-age-custom.validator';
+import { IsAgeValid } from '../validators/min-age-custom.validator';
 
 export class CreateUserRequestDto {
   @IsString()
@@ -64,7 +64,7 @@ export class CreateUserRequestDto {
   @IsDate()
   @IsNotEmpty({ message: 'Birth date is required.' })
   @Type(() => Date)
-  @IsAtLeast18({
+  @IsAgeValid({
     message: 'Identity Access Denied: Minimum age requirement is 18.',
   })
   birthDate: Date;

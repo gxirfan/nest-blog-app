@@ -10,10 +10,10 @@ import { CensorModule } from 'src/common/censor/censor.module';
   imports: [
     UserModule,
     MongooseModule.forFeature([{ name: Tag.name, schema: TagSchema }]),
-    CensorModule
+    CensorModule,
   ],
   controllers: [TagsController],
   providers: [TagsService],
-  exports: [TagsService]
+  exports: [TagsService],
 })
 export class TagsModule {}

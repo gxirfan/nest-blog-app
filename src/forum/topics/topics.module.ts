@@ -12,7 +12,7 @@ import { CensorModule } from 'src/common/censor/censor.module';
     MongooseModule.forFeature([{ name: Topic.name, schema: TopicSchema }]),
     TagsModule,
     UserModule,
-    CensorModule
+    CensorModule,
   ],
   controllers: [TopicsController],
   providers: [TopicsService],

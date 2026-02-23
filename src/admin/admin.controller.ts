@@ -27,7 +27,6 @@ import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { TransformInterceptor } from 'src/common/interceptors/transform.interceptor';
 import { FlowMapper } from 'src/flow/mappers/flow.mapper';
 import { ContactMapper } from 'src/contact/mappers/contact.mapper';
-import { IBaseResponse } from 'src/common/interfaces/base-response.interface';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { ContactResponseDto } from 'src/contact/dto/contact-response.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -180,15 +179,11 @@ export class AdminController {
   @ResponseMessage('Contacts fetched successfully.')
   async findAllContacts(
     @Query() paginationQueryDto: PaginationQueryDto,
-  ): Promise<IBaseResponse<IPaginationResponse<ContactResponseDto>>> {
+  ): Promise<IPaginationResponse<ContactResponseDto>> {
     const result = await this.adminService.findAllContacts(paginationQueryDto);
     return {
-      statusCode: 200,
-      success: true,
-      data: {
-        data: ContactMapper.toResponseDto(result.data),
-        meta: result.meta,
-      },
+      data: ContactMapper.toResponseDto(result.data),
+      meta: result.meta,
     };
   }
 

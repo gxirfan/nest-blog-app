@@ -18,9 +18,7 @@ import { AdminGuard } from 'src/admin/guards/admin.guard';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { TransformInterceptor } from 'src/common/interceptors/transform.interceptor';
-import { IContactResponse } from './interfaces/contact.response.interface';
 import { ContactMapper } from './mappers/contact.mapper';
-import { IBaseResponse } from 'src/common/interfaces/base-response.interface';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { ContactResponseDto } from './dto/contact-response.dto';
@@ -47,19 +45,15 @@ export class ContactController {
   async findAll(
     // Extract pagination parameters from the query string
     @Query() paginationQueryDto: PaginationQueryDto,
-  ): Promise<IBaseResponse<IPaginationResponse<ContactResponseDto>>> {
+  ): Promise<IPaginationResponse<ContactResponseDto>> {
     // Fetch paginated data from the service
     const paginatedData =
       await this.contactService.findAllPaginated(paginationQueryDto);
 
     // Map the documents to DTOs while preserving the pagination structure
     return {
-      statusCode: 200,
-      success: true,
-      data: {
-        data: ContactMapper.toResponseDto(paginatedData.data),
-        meta: paginatedData.meta,
-      },
+      data: ContactMapper.toResponseDto(paginatedData.data),
+      meta: paginatedData.meta,
     };
   }
 

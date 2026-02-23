@@ -5,35 +5,42 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 
-@ValidatorConstraint({ name: 'isAtLeast18', async: false })
-export class IsAtLeast18Constraint implements ValidatorConstraintInterface {
+@ValidatorConstraint({ name: 'isAgeValid', async: false })
+class IsAgeValidConstraint implements ValidatorConstraintInterface {
   validate(birthDate: any) {
     if (!(birthDate instanceof Date) || isNaN(birthDate.getTime()))
       return false;
 
     const today = new Date();
-    const minDate = new Date(
+
+    const minAgeDate = new Date(
       today.getFullYear() - 18,
       today.getMonth(),
       today.getDate(),
     );
 
-    return birthDate <= minDate;
+    const maxAgeDate = new Date(
+      today.getFullYear() - 80,
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    return birthDate <= minAgeDate && birthDate >= maxAgeDate;
   }
 
   defaultMessage() {
-    return 'You must be at least 18 years old to register.';
+    return 'Identity validation failed: Age must be between 18 and 80 years.';
   }
 }
 
-export function IsAtLeast18(validationOptions?: ValidationOptions) {
+export function IsAgeValid(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
       constraints: [],
-      validator: IsAtLeast18Constraint,
+      validator: IsAgeValidConstraint,
     });
   };
 }

@@ -1,6 +1,6 @@
 import {
   IsBoolean,
-  IsDateString,
+  IsDate,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -9,7 +9,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserRole, UserStatus, UserGender } from '../schemas/user.schema';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { IsAgeValid } from '../validators/min-age-custom.validator';
 
 export class BaseUpdateUserDto {
   @IsOptional()
@@ -66,12 +67,16 @@ export class BaseUpdateUserDto {
   )
   email?: string;
 
+  @IsDate()
   @IsOptional()
-  @IsDateString()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
+  @Type(() => Date)
+  @IsAgeValid({
+    message: 'Identity Access Denied: Minimum age requirement is 18.',
+  })
+  @Transform(({ value }: { value: string | Date }) =>
+    value === '' ? undefined : new Date(value),
   )
-  birthDate?: string;
+  birthDate?: Date;
 
   @IsOptional()
   @IsString()

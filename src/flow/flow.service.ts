@@ -239,6 +239,7 @@ export class FlowService {
         .skip(skip)
         .limit(limit)
         .populate({ path: 'author', select: 'username nickname avatar role' })
+        .populate({ path: 'parentId', select: 'content slug' })
         .lean()
         .exec(),
       this.flowModel.countDocuments({ author: user._id, isDeleted: false }),
@@ -263,6 +264,7 @@ export class FlowService {
         .skip(skip)
         .limit(limit)
         .populate({ path: 'author', select: 'username nickname avatar role' })
+        .populate({ path: 'parentId', select: 'content slug' })
         .lean()
         .exec(),
       this.flowModel.countDocuments({
