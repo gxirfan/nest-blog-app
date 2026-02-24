@@ -97,14 +97,25 @@ export class CensorService {
 
       const pattern = word
         .split('')
-        .map((char) => `${char}+[^a-z0-9ğüşıöç]*`)
+        .map((char) => `${char}+[^${patternFromEnv}]*`)
         .join('');
 
-      // 'gi' for global and case-insensitive search
       const regex = new RegExp(pattern, 'gi');
 
-      // Censor
-      censoredText = censoredText.replace(regex, () => {
+      censoredText = censoredText.replace(regex, (match, offset, fullText) => {
+        const charBefore = fullText[offset - 1] || '';
+        const charAfter = fullText[offset + match.length] || '';
+
+        const isLetter = (char: string) => patternFromEnv.includes(char);
+
+        const isPartBefore = isLetter(charBefore);
+        const isPartAfter = isLetter(charAfter);
+        const isInsideWord = isPartBefore || isPartAfter;
+
+        if (isInsideWord && match.trim().length < 4) {
+          return match;
+        }
+
         return (
           pleasantEmojis[Math.floor(Math.random() * pleasantEmojis.length)] +
           ' '
