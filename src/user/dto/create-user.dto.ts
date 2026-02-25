@@ -37,12 +37,20 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsNotEmpty({ message: 'First name is required.' })
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    return value.trim().replace(/\s+/g, ' ');
+  })
   @MinLength(1, { message: 'First name must be at least 1 character long.' })
   @MaxLength(50, { message: 'First name must be at most 50 characters long.' })
   firstName: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Last name is required.' })
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    return value.trim().replace(/\s+/g, ' ');
+  })
   @MinLength(1, { message: 'Last name must be at least 1 character long.' })
   @MaxLength(50, { message: 'Last name must be at most 50 characters long.' })
   lastName: string;

@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -17,71 +18,87 @@ export class BaseUpdateUserDto {
   @IsString()
   @MinLength(3)
   @MaxLength(50)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
+  @Matches(/^\S+$/, {
+    message: 'Username cannot contain spaces.',
+  })
   username?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(50)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   nickname?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(50)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   firstName?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(50)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   lastName?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(500)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   bio?: string;
 
   @IsOptional()
   @IsEmail()
   @MinLength(1)
   @MaxLength(100)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
   email?: string;
 
-  @IsDate()
   @IsOptional()
+  @IsDate()
   @Type(() => Date)
   @IsAgeValid({
     message: 'Identity Access Denied: Minimum age requirement is 18.',
   })
-  @Transform(({ value }: { value: string | Date }) =>
-    value === '' ? undefined : new Date(value),
-  )
+  @Transform(({ value }: { value: string | Date }) => {
+    if (!value || value === '') return undefined;
+    return new Date(value);
+  })
   birthDate?: Date;
 
   @IsOptional()
   @IsString()
   @MinLength(1)
-  @MaxLength(50)
+  @MaxLength(100)
   @Transform(({ value }: { value: string }) =>
     value === '' ? undefined : value,
   )
@@ -90,7 +107,7 @@ export class BaseUpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
-  @MaxLength(50)
+  @MaxLength(100)
   @Transform(({ value }: { value: string }) =>
     value === '' ? undefined : value,
   )
@@ -99,10 +116,12 @@ export class BaseUpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
-  @MaxLength(50)
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @MaxLength(100)
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   location?: string;
 
   @IsOptional()
@@ -112,7 +131,9 @@ export class BaseUpdateUserDto {
 
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }) => (value === '' ? undefined : value))
+  @Transform(({ value }) =>
+    value === '' || value === null ? undefined : value,
+  )
   isEmailPublic?: boolean;
 }
 
