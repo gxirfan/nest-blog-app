@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { ConfigService } from '@nestjs/config';
 import { MailerService } from 'src/mailer/mailer.service';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { BadRequestException } from '@nestjs/common';
@@ -11,7 +10,6 @@ import { RecoverPasswordDto } from './dto/recover-password.dto';
 export class AuthService {
   constructor(
     private userService: UserService,
-    private configService: ConfigService,
     private mailerService: MailerService,
   ) {}
 

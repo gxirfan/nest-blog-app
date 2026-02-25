@@ -17,8 +17,6 @@ export class CreateUserRequestDto {
   @IsString()
   @Transform(({ value }: { value: string }) => {
     if (typeof value !== 'string') return value;
-    // 1. Trim: Remove leading and trailing spaces
-    // 2. If empty string, convert to undefined (per your existing logic)
     const trimmed = value.trim();
     return trimmed === '' ? undefined : trimmed;
   })
@@ -31,9 +29,10 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   nickname?: string;
 
   @IsString()
@@ -50,9 +49,10 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   bio?: string;
 
   @IsEmail()
@@ -85,16 +85,17 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
   location?: string;
 
   @IsEnum(UserGender)
   @IsOptional()
-  @Transform(({ value }: { value: string }) =>
-    value === '' ? undefined : value,
-  )
+  @Transform(({ value }: { value: string }) => {
+    return value === '' ? undefined : value;
+  })
   gender?: UserGender;
 
   @IsString()

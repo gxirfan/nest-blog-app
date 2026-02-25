@@ -13,6 +13,7 @@ import {
   ValidationPipe,
   InternalServerErrorException,
   HttpException,
+  Query,
 } from '@nestjs/common';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthenticatedGuard } from './guards/authenticated.guard';
@@ -36,13 +37,28 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
+  // Standard GET request for availability check
+  @Get('check-username')
+  async checkUsername(@Query('username') username: string) {
+    // Basic validation: must be at least 3 chars
+    if (!username || username.length < 3) {
+      return { available: false, message: 'Username too short' };
+    }
+
+    const isAvailable = await this.userService.isUsernameAvailable(username);
+
+    return {
+      available: isAvailable,
+      username: username.toLowerCase(),
+    };
+  }
+
   @UseInterceptors(TransformInterceptor)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @Post('register')
   async create(
     @Body() userDto: CreateUserRequestDto,
   ): Promise<UserResponseWithRecoveryCodesDto> {
-    console.log(userDto);
     const user = await this.userService.create(userDto);
     const cleanUserResponse: UserResponseWithRecoveryCodesDto = {
       id: user.id,

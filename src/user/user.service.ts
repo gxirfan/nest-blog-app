@@ -31,6 +31,13 @@ export class UserService {
   async comparePassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
+  async isUsernameAvailable(username: string): Promise<boolean> {
+    const count = await this.userModel.countDocuments({
+      username: username.toLowerCase(),
+    });
+
+    return count === 0;
+  }
   //create
   async create(
     userDto: CreateUserRequestDto,
