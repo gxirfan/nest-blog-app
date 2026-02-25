@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from './local.strategy';
 import { SessionSerializer } from './session.serializer';
 import { MailerModule } from 'src/mailer/mailer.module';
+import { CensorModule } from 'src/common/censor/censor.module';
 
 @Module({
   controllers: [AuthController],
@@ -14,6 +15,7 @@ import { MailerModule } from 'src/mailer/mailer.module';
     UserModule,
     PassportModule.register({ session: true }),
     MailerModule,
+    CensorModule,
   ],
 })
 export class AuthModule {}

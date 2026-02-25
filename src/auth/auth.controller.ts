@@ -29,6 +29,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { TransformInterceptor } from 'src/common/interceptors/transform.interceptor';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
+import { CensorInterceptor } from 'src/common/censor/censor.interceptor';
 
 @Controller('auth')
 export class AuthController {
@@ -54,6 +55,7 @@ export class AuthController {
   }
 
   @UseInterceptors(TransformInterceptor)
+  @UseInterceptors(CensorInterceptor)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @Post('register')
   async create(

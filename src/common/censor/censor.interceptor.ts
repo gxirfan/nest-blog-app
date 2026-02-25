@@ -5,29 +5,57 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { CensorService } from './censor.service';
 
 @Injectable()
 export class CensorInterceptor implements NestInterceptor {
+  private readonly fieldsToCensor = [
+    'content',
+    'title',
+    'bio',
+    'description',
+    'username',
+    'nickname',
+    'firstName',
+    'lastName',
+    'location',
+  ];
+
   constructor(private readonly censorService: CensorService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const body = request.body;
 
-    const fieldsToCensor = ['content', 'title', 'bio', 'description'];
+    if (request.body) {
+      this.processData(request.body);
+    }
 
-    for (const field of fieldsToCensor) {
-      if (body[field] && typeof body[field] === 'string') {
-        if (field === 'content' && body[field].includes('data:image')) {
-          body[field] = this.safeCensor(body[field]);
+    return next.handle().pipe(
+      map((data) => {
+        return this.processData(data);
+      }),
+    );
+  }
+
+  private processData(data: any): any {
+    if (!data || typeof data !== 'object') return data;
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.processData(item));
+    }
+
+    for (const field of this.fieldsToCensor) {
+      if (data[field] && typeof data[field] === 'string') {
+        if (field === 'content' && data[field].includes('data:image')) {
+          data[field] = this.safeCensor(data[field]);
         } else {
-          body[field] = this.censorService.censor(body[field]);
+          data[field] = this.censorService.censor(data[field]);
         }
       }
     }
 
-    return next.handle();
+    return data;
   }
 
   private safeCensor(content: string): string {

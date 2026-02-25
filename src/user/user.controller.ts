@@ -20,6 +20,7 @@ import { UploadedFiles } from '@nestjs/common';
 import { mediaUploadOptions } from 'src/common/utils/media-upload.utils';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { Multer } from 'multer';
+import { CensorInterceptor } from 'src/common/censor/censor.interceptor';
 @UseInterceptors(TransformInterceptor)
 @Controller('user')
 export class UserController {
@@ -36,6 +37,7 @@ export class UserController {
   @UseGuards(AuthenticatedGuard)
   @Patch('update')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UseInterceptors(CensorInterceptor)
   @ResponseMessage('User updated successfully.')
   async update(
     @Request() req,

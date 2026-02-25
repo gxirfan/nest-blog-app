@@ -3,10 +3,12 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
+import { CensorModule } from 'src/common/censor/censor.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    CensorModule,
   ],
   controllers: [UserController],
   providers: [UserService],
