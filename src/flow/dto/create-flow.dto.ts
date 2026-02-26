@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsMongoId,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateFlowDto {
   @IsNotEmpty()
@@ -17,6 +18,10 @@ export class CreateFlowDto {
   parentId?: string;
 
   @IsString()
-  @MaxLength(500, { message: 'Flow content cannot exceed 500 characters.' })
-  slug: string;
+  @IsOptional()
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    return value.trim().replace(/\s+/g, '-').toLowerCase();
+  })
+  slug?: string;
 }

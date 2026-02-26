@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateTopicDto } from './dto/create-topic.dto';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Topic, TopicDocument } from './schemas/topic.schema';
 import { UserService } from 'src/user/user.service';
@@ -18,6 +18,7 @@ import { MetaDto } from 'src/common/dto/meta.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import * as cacheManager from 'cache-manager';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { UserRole } from 'src/user/schemas/user.schema';
 
 @Injectable()
 export class TopicsService {
@@ -65,14 +66,19 @@ export class TopicsService {
       if (!user) throw new NotFoundException('User not found');
 
       const tag = await this.tagService.findOneByIdAsDocument(
-        createTopicDto.tagId,
+        createTopicDto.tagId.toString(),
       );
 
       if (!tag) throw new NotFoundException('Tag not found');
 
+      const tagId = Types.ObjectId.createFromHexString(tag.id.toString());
+      const userObjectId = Types.ObjectId.createFromHexString(
+        user.id.toString(),
+      );
+
       const topic = new this.topicSchema({
-        userId: user.id,
-        tagId: tag.id,
+        userId: userObjectId,
+        tagId,
         title: createTopicDto.title,
         content: createTopicDto.content,
         slug: await this.createUniqueSlug(createTopicDto.title),
@@ -101,11 +107,11 @@ export class TopicsService {
 
     if (viewed) return;
 
-    this.topicSchema
+    await this.topicSchema
       .findByIdAndUpdate(topicId, { $inc: { viewCount: 1 } })
       .exec();
 
-    this.cacheManager.set(cacheKey, '1', 86400);
+    await this.cacheManager.set(cacheKey, '1', 86400);
   }
 
   async findAll(): Promise<TopicDocument[]> {
@@ -122,7 +128,9 @@ export class TopicsService {
 
   async findStatusTrue(): Promise<TopicDocument[]> {
     const tags = await this.tagService.findAllStatusTrue();
-    const tagIds = tags.map((tag) => tag.id);
+    const tagIds = tags.map((tag) =>
+      Types.ObjectId.createFromHexString(tag.id),
+    );
     return await this.topicSchema
       .find({ tagId: { $in: tagIds }, status: true }, { _id: 1 })
       .exec();
@@ -133,7 +141,9 @@ export class TopicsService {
   ): Promise<{ data: TopicDocument[]; meta: MetaDto }> {
     const { page, limit } = query;
     const tags = await this.tagService.findAllStatusTrue();
-    const tagIds = tags.map((tag) => tag.id);
+    const tagIds = tags.map((tag) =>
+      Types.ObjectId.createFromHexString(tag.id),
+    );
 
     const [topics, total] = await Promise.all([
       this.topicSchema
@@ -167,7 +177,10 @@ export class TopicsService {
     const { page, limit } = query;
     const [topics, total] = await Promise.all([
       this.topicSchema
-        .find({ tagId, status: true })
+        .find({
+          tagId: Types.ObjectId.createFromHexString(tagId),
+          status: true,
+        })
         .populate({
           path: 'userId',
           select: 'username nickname firstName lastName bio role avatar',
@@ -181,7 +194,12 @@ export class TopicsService {
         .skip((page - 1) * limit)
         .limit(limit)
         .exec(),
-      this.topicSchema.countDocuments({ tagId, status: true }).exec(),
+      this.topicSchema
+        .countDocuments({
+          tagId: Types.ObjectId.createFromHexString(tagId),
+          status: true,
+        })
+        .exec(),
     ]);
     return {
       data: topics,
@@ -196,7 +214,7 @@ export class TopicsService {
     const { page, limit } = query;
     const [topics, total] = await Promise.all([
       this.topicSchema
-        .find({ userId })
+        .find({ userId: Types.ObjectId.createFromHexString(userId) })
         .populate({
           path: 'userId',
           select: 'username nickname firstName lastName bio role avatar',
@@ -210,7 +228,9 @@ export class TopicsService {
         .skip((page - 1) * limit)
         .limit(limit)
         .exec(),
-      this.topicSchema.countDocuments({ userId }).exec(),
+      this.topicSchema
+        .countDocuments({ userId: Types.ObjectId.createFromHexString(userId) })
+        .exec(),
     ]);
     return {
       data: topics,
@@ -261,7 +281,7 @@ export class TopicsService {
 
   async findOneByTagId(tagId: string): Promise<TopicDocument[]> {
     return await this.topicSchema
-      .find({ tagId })
+      .find({ tagId: Types.ObjectId.createFromHexString(tagId) })
       .populate({
         path: 'userId',
         select: 'username nickname firstName lastName bio role avatar',
@@ -291,15 +311,15 @@ export class TopicsService {
     if (!user) throw new NotFoundException('User not found');
 
     const topic = await this.topicSchema.findOne({
-      _id: id,
-      userId: currentUserId,
+      _id: Types.ObjectId.createFromHexString(id),
+      userId: Types.ObjectId.createFromHexString(currentUserId),
     });
 
     if (!topic) throw new NotFoundException('Topic not found');
 
     if (
-      user.role !== 'admin' &&
-      user.role !== 'moderator' &&
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.MODERATOR &&
       topic.userId.toString() !== currentUserId
     )
       throw new ForbiddenException(
@@ -333,7 +353,11 @@ export class TopicsService {
     updateTopicDto: UpdateTopicDto,
   ): Promise<TopicDocument> {
     const updatedTopic = await this.topicSchema
-      .findOneAndUpdate({ _id: id }, updateTopicDto, { new: true })
+      .findOneAndUpdate(
+        { _id: Types.ObjectId.createFromHexString(id) },
+        updateTopicDto,
+        { new: true },
+      )
       .exec();
 
     if (!updatedTopic) throw new NotFoundException('Topic not found');
@@ -343,7 +367,7 @@ export class TopicsService {
 
   async deleteOneById(id: string): Promise<TopicDocument> {
     const deletedTopic = await this.topicSchema
-      .findOneAndDelete({ _id: id })
+      .findOneAndDelete({ _id: Types.ObjectId.createFromHexString(id) })
       .exec();
 
     if (!deletedTopic) throw new NotFoundException('Topic not found');

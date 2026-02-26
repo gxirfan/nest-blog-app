@@ -2,7 +2,6 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  UseGuards,
 } from '@nestjs/common';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { UserService } from 'src/user/user.service';
@@ -14,6 +13,7 @@ import slugify from 'slugify';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { UnauthorizedException } from '@nestjs/common';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
+import { UserRole } from 'src/user/schemas/user.schema';
 
 @Injectable()
 export class TagsService {
@@ -43,15 +43,17 @@ export class TagsService {
     userId: string,
     createTagDto: CreateTagDto,
   ): Promise<TagDocument> {
+    const userObjectId = new Types.ObjectId(userId);
     const tag: CreateTagDto = {
       title: createTagDto.title,
       description: createTagDto.description,
       slug: await this.createUniqueSlug(createTagDto.title),
-      userId,
+      userId: userObjectId,
     };
+
     const tagDocument = new this.tagSchema(tag);
 
-    const user = await this.userService.findOneById(userId);
+    const user = await this.userService.findOneById(userObjectId.toString());
 
     if (!user || Array.isArray(user)) throw new Error('User not found');
 
@@ -101,7 +103,7 @@ export class TagsService {
 
     const [tags, total] = await Promise.all([
       this.tagSchema
-        .find({ userId })
+        .find({ userId: new Types.ObjectId(userId) })
         .skip(skip)
         .limit(limit)
         .populate({
@@ -128,7 +130,7 @@ export class TagsService {
 
     const [tags, total] = await Promise.all([
       this.tagSchema
-        .find({ userId })
+        .find({ userId: new Types.ObjectId(userId) })
         .skip(skip)
         .limit(limit)
         .populate({
@@ -170,7 +172,10 @@ export class TagsService {
 
     const user = userId ? await this.userService.findOneById(userId) : null;
 
-    if (user && (user.role === 'admin' || user.role === 'moderator'))
+    if (
+      user &&
+      (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR)
+    )
       return tag;
 
     if (tag.status === false && user && Object(tag.userId).id !== userId)
@@ -201,7 +206,7 @@ export class TagsService {
     updateTagDto: UpdateTagDto,
   ): Promise<TagDocument> {
     const tag = await this.tagSchema
-      .findOne({ _id: id, userId: currentUserId })
+      .findOne({ _id: id, userId: new Types.ObjectId(currentUserId) })
       .exec();
 
     if (!tag) throw new NotFoundException('Tag not found');
@@ -231,7 +236,9 @@ export class TagsService {
     updateTagDto: UpdateTagDto,
   ): Promise<TagDocument> {
     const updatedTag = await this.tagSchema
-      .findOneAndUpdate({ _id: id }, updateTagDto, { new: true })
+      .findOneAndUpdate({ _id: new Types.ObjectId(id) }, updateTagDto, {
+        new: true,
+      })
       .exec();
 
     if (!updatedTag) throw new NotFoundException('Tag not found');
@@ -241,7 +248,7 @@ export class TagsService {
 
   async deleteOneById(id: string): Promise<TagDocument> {
     const deletedTag = await this.tagSchema
-      .findOneAndDelete({ _id: id })
+      .findOneAndDelete({ _id: new Types.ObjectId(id) })
       .exec();
 
     if (!deletedTag) throw new NotFoundException('Tag not found');

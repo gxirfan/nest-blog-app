@@ -1,4 +1,5 @@
 import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateFlowDto {
   @IsOptional()
@@ -9,7 +10,11 @@ export class UpdateFlowDto {
   @IsOptional()
   isDeleted?: boolean;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    return value.trim().replace(/\s+/g, '-').toLowerCase();
+  })
   slug?: string;
 }

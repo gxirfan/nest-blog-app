@@ -1,34 +1,63 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsString,
+  IsOptional,
+  MinLength,
+  IsMongoId,
+  IsNumber,
+  IsDate,
+  IsBoolean,
+  IsNotEmpty,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { Types } from 'mongoose';
 
 export class UpdateTopicDto {
-    @IsString()
-    @IsOptional()
-    @MinLength(1)
-    title?: string;
-    
-    @IsString()
-    @IsOptional()
-    @MinLength(1)
-    content?: string;
-    
-    @IsString()
-    @IsOptional()
-    @MinLength(1)
-    tagId?: string;
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
+  @MinLength(1)
+  title?: string;
 
-    @IsNumber()
-    @IsOptional()
-    postCount?: number;
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
+  })
+  @MinLength(1)
+  content?: string;
 
-    @IsDate()
-    @IsOptional()
-    lastPostAt?: Date;
-    
-    @IsBoolean()
-    @IsOptional()
-    status?: boolean;
+  @IsMongoId()
+  @IsOptional()
+  tagId?: Types.ObjectId;
 
-    @IsString()
-    @IsOptional()
-    slug?: string;
+  @IsNumber()
+  @IsOptional()
+  postCount?: number;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  lastPostAt?: Date;
+
+  @IsBoolean()
+  @IsOptional()
+  status?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }: { value: string }) => {
+    if (typeof value !== 'string') return value;
+    return value.trim().replace(/\s+/g, '-').toLowerCase();
+  })
+  slug?: string;
+
+  @IsNotEmpty()
+  @IsMongoId()
+  userId: Types.ObjectId;
 }

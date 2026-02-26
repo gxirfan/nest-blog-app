@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Post, PostDocument } from './schemas/post.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import slugify from 'slugify';
@@ -148,12 +148,18 @@ export class PostsService {
   async createPost(userId: string, createPostDto: CreatePostDto) {
     const { mainImage, ...otherFields } = createPostDto;
     const content = await this.processImagesInContent(createPostDto.content);
+    const parentId = createPostDto.parentId
+      ? new Types.ObjectId(createPostDto.parentId)
+      : null;
+    const topicId = new Types.ObjectId(createPostDto.topicId);
     const post = new this.postModel({
       ...otherFields,
-      userId,
+      userId: new Types.ObjectId(userId),
       slug: await this.createUniqueSlug(createPostDto.title),
       content,
       readingTime: this.calculateReadingTime(content),
+      parentId,
+      topicId,
     });
 
     if (mainImage) {
@@ -161,7 +167,7 @@ export class PostsService {
         this.saveBase64Image(mainImage, 'postCovers') ?? undefined;
     }
 
-    await this.topicService.updateLastPostAt(createPostDto.topicId);
+    await this.topicService.updateLastPostAt(createPostDto.topicId.toString());
 
     const savedPost = await post.save();
 
@@ -170,8 +176,11 @@ export class PostsService {
       await this.updatePostCount(savedPost.topicId);
 
       const count = await this.countDocumentsByTopicId(savedPost.topicId);
-      await this.topicService.updateLastPostAt(savedPost.topicId);
-      await this.topicService.updatePostCount(savedPost.topicId, count);
+      await this.topicService.updateLastPostAt(savedPost.topicId.toString());
+      await this.topicService.updatePostCount(
+        savedPost.topicId.toString(),
+        count,
+      );
     }
 
     if (savedPost && savedPost.parentId) {
@@ -226,7 +235,9 @@ export class PostsService {
     const skip = (page - 1) * limit;
 
     const activeTopics = await this.topicService.findStatusTrue();
-    const activeTopicIds = activeTopics.map((topic) => topic.id);
+    const activeTopicIds = activeTopics.map((topic) =>
+      Types.ObjectId.createFromHexString(topic.id.toString()),
+    );
 
     const [posts, total] = await Promise.all([
       this.postModel
@@ -259,7 +270,9 @@ export class PostsService {
     const skip = (page - 1) * limit;
 
     const activeTopics = await this.topicService.findStatusTrue();
-    const activeTopicIds = activeTopics.map((topic) => topic.id);
+    const activeTopicIds = activeTopics.map((topic) =>
+      Types.ObjectId.createFromHexString(topic.id.toString()),
+    );
 
     const [posts, total] = await Promise.all([
       this.postModel
@@ -330,7 +343,9 @@ export class PostsService {
     const { page, limit } = query;
     const skip = (page - 1) * limit;
     const activeTopics = await this.topicService.findStatusTrue();
-    const activeTopicIds = activeTopics.map((topic) => topic.id);
+    const activeTopicIds = activeTopics.map((topic) =>
+      Types.ObjectId.createFromHexString(topic.id.toString()),
+    );
 
     const [posts, total] = await Promise.all([
       this.postModel
@@ -366,7 +381,9 @@ export class PostsService {
     const { page, limit } = query;
     const skip = (page - 1) * limit;
     const activeTopics = await this.topicService.findStatusTrue();
-    const activeTopicIds = activeTopics.map((topic) => topic.id);
+    const activeTopicIds = activeTopics.map((topic) =>
+      Types.ObjectId.createFromHexString(topic.id.toString()),
+    );
 
     const user = await this.userService.findOneByUsername(username);
     if (!user) throw new NotFoundException('User not found');
@@ -374,7 +391,7 @@ export class PostsService {
     const [posts, total] = await Promise.all([
       this.postModel
         .find({
-          userId: user.id,
+          userId: Types.ObjectId.createFromHexString(user.id.toString()),
           topicId: { $in: activeTopicIds },
           status: true,
         })
@@ -390,7 +407,7 @@ export class PostsService {
         .exec(),
       this.postModel
         .countDocuments({
-          userId: user.id,
+          userId: Types.ObjectId.createFromHexString(user.id.toString()),
           topicId: { $in: activeTopicIds },
           status: true,
         })
@@ -412,8 +429,8 @@ export class PostsService {
 
     const activeTopics = await this.topicService.findStatusTrue();
     const activeTopicIds = activeTopics
-      .map((topic) => topic.id.toString())
-      .filter((id) => id === topicId);
+      .map((topic) => Types.ObjectId.createFromHexString(topic.id.toString()))
+      .filter((id) => id.toString() === topicId);
 
     const findFilter = {
       topicId: { $in: activeTopicIds },
@@ -455,11 +472,17 @@ export class PostsService {
     const { page, limit } = query;
     const skip = (page - 1) * limit;
     const activeTopics = await this.topicService.findStatusTrue();
-    const activeTopicIds = activeTopics.map((topic) => topic.id);
+    const activeTopicIds = activeTopics.map((topic) =>
+      Types.ObjectId.createFromHexString(topic.id.toString()),
+    );
 
     const [posts, total] = await Promise.all([
       this.postModel
-        .find({ topicId: { $in: activeTopicIds }, parentId, status: true })
+        .find({
+          topicId: { $in: activeTopicIds },
+          parentId: Types.ObjectId.createFromHexString(parentId),
+          status: true,
+        })
         .populate({
           path: 'userId',
           select: 'username role nickname firstName lastName email avatar',
@@ -473,7 +496,7 @@ export class PostsService {
       this.postModel
         .countDocuments({
           topicId: { $in: activeTopicIds },
-          parentId,
+          parentId: Types.ObjectId.createFromHexString(parentId),
           status: true,
         })
         .exec(),
@@ -493,7 +516,7 @@ export class PostsService {
 
     const [posts, total] = await Promise.all([
       this.postModel
-        .find({ userId })
+        .find({ userId: Types.ObjectId.createFromHexString(userId) })
         .populate({
           path: 'userId',
           select: 'username role nickname firstName lastName email avatar',
@@ -504,7 +527,9 @@ export class PostsService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.postModel.countDocuments({ userId }).exec(),
+      this.postModel
+        .countDocuments({ userId: Types.ObjectId.createFromHexString(userId) })
+        .exec(),
     ]);
     return {
       data: posts,

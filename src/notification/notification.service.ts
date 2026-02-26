@@ -14,6 +14,7 @@ import {
 } from './events/notification.events';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class NotificationService {
@@ -37,12 +38,12 @@ export class NotificationService {
     const action = payload.direction === 1 ? 'upvoted' : 'downvoted';
 
     await this.create({
-      recipientId: payload.postOwnerId,
-      senderId: payload.voterId,
+      recipientId: Types.ObjectId.createFromHexString(payload.postOwnerId),
+      senderId: Types.ObjectId.createFromHexString(payload.voterId),
       type: type,
       message: `@${payload.voterNickname} ${action} your entry: "${payload.postTitle.substring(0, 30)}..."`,
       targetUrl: payload.postSlug,
-      relatedPostId: payload.postId,
+      relatedPostId: Types.ObjectId.createFromHexString(payload.postId),
     });
   }
 
@@ -51,12 +52,12 @@ export class NotificationService {
     if (payload.replierId === payload.postOwnerId) return;
 
     await this.create({
-      recipientId: payload.postOwnerId,
-      senderId: payload.replierId,
+      recipientId: Types.ObjectId.createFromHexString(payload.postOwnerId),
+      senderId: Types.ObjectId.createFromHexString(payload.replierId),
       type: NotificationType.POST_REPLY,
       message: `@${payload.replierNickname} replied to your entry: "${payload.parentPostTitle.substring(0, 30)}..."`,
       targetUrl: payload.replySlug,
-      relatedPostId: payload.parentPostId,
+      relatedPostId: Types.ObjectId.createFromHexString(payload.parentPostId),
     });
   }
 
@@ -65,12 +66,12 @@ export class NotificationService {
     const message = `${payload.replierNickname} replied to your thread: "${payload.parentContent}..."`;
 
     await this.create({
-      recipientId: payload.recipientId,
-      senderId: payload.replierId,
+      recipientId: Types.ObjectId.createFromHexString(payload.recipientId),
+      senderId: Types.ObjectId.createFromHexString(payload.replierId),
       type: NotificationType.FLOW_REPLY,
       message: message,
       targetUrl: payload.replySlug,
-      relatedPostId: payload.replyId,
+      relatedPostId: Types.ObjectId.createFromHexString(payload.replyId),
     });
   }
 
@@ -84,13 +85,16 @@ export class NotificationService {
     userId: string,
   ): Promise<IPaginationResponse<NotificationDocument>> {
     const data = await this.notificationModel
-      .find({ recipientId: userId, isRead: false })
+      .find({
+        recipientId: Types.ObjectId.createFromHexString(userId),
+        isRead: false,
+      })
       .sort({ createdAt: -1 })
       .populate('senderId', 'username nickname avatar')
       .exec();
 
     const unreadCount = await this.notificationModel.countDocuments({
-      recipientId: userId,
+      recipientId: Types.ObjectId.createFromHexString(userId),
       isRead: false,
     });
 
@@ -103,13 +107,15 @@ export class NotificationService {
   ): Promise<IPaginationResponse<NotificationDocument>> {
     const [data, total] = await Promise.all([
       this.notificationModel
-        .find({ recipientId: userId })
+        .find({ recipientId: Types.ObjectId.createFromHexString(userId) })
         .sort({ createdAt: -1 })
         .skip((queryDto.page - 1) * queryDto.limit)
         .limit(queryDto.limit)
         .populate('senderId', 'username nickname avatar')
         .exec(),
-      this.notificationModel.countDocuments({ recipientId: userId }),
+      this.notificationModel.countDocuments({
+        recipientId: Types.ObjectId.createFromHexString(userId),
+      }),
     ]);
 
     return {
@@ -128,7 +134,10 @@ export class NotificationService {
     userId: string,
   ): Promise<NotificationDocument> {
     const notification = await this.notificationModel.findOneAndUpdate(
-      { _id: notificationId, recipientId: userId },
+      {
+        _id: notificationId,
+        recipientId: Types.ObjectId.createFromHexString(userId),
+      },
       { $set: { isRead: true } },
       { new: true },
     );
@@ -138,12 +147,15 @@ export class NotificationService {
 
   async markAllAsRead(userId: string): Promise<NotificationDocument[]> {
     await this.notificationModel.updateMany(
-      { recipientId: userId, isRead: false },
+      {
+        recipientId: Types.ObjectId.createFromHexString(userId),
+        isRead: false,
+      },
       { $set: { isRead: true } },
     );
 
     const updatedNotifications = await this.notificationModel.find({
-      recipientId: userId,
+      recipientId: Types.ObjectId.createFromHexString(userId),
       isRead: true,
     });
     if (!updatedNotifications) throw new Error('Notifications not found.');

@@ -127,7 +127,6 @@ export class AuthController {
           createdAt: rawUser.createdAt,
           updatedAt: rawUser.updatedAt,
         };
-
         resolve({
           statusCode: HttpStatus.OK,
           success: true,

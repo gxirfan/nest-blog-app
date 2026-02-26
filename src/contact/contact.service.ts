@@ -55,7 +55,7 @@ export class ContactService {
     // Execute count and data fetch in parallel for better performance
     const [data, total] = await Promise.all([
       this.contactMessageModel
-        .find({ isRead: false })
+        .find()
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -87,12 +87,13 @@ export class ContactService {
 
   async findOneBySlug(slug: string): Promise<ContactMessageDocument> {
     const contactMessage = await this.contactMessageModel
-      .findOne({ slug, isRead: false })
+      .findOne({ slug })
       .exec();
     if (!contactMessage) {
       throw new NotFoundException('Contact message not found');
     }
-    // TODO: Mark as read if needed
+    contactMessage.isRead = true;
+    await contactMessage.save();
     return contactMessage;
   }
 

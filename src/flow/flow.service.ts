@@ -62,11 +62,16 @@ export class FlowService {
       throw new BadRequestException('Flow content cannot be empty.');
     }
 
+    const parentId = createFlowDto.parentId
+      ? new Types.ObjectId(createFlowDto.parentId)
+      : null;
+
     const newFlow = await this.flowModel.create({
       ...createFlowDto,
       content: createFlowDto.content.trim(),
       slug,
       author: new Types.ObjectId(userId),
+      parentId,
     });
 
     const createdFlow = await newFlow.populate({
@@ -165,14 +170,20 @@ export class FlowService {
 
     const [data, total] = await Promise.all([
       this.flowModel
-        .find({ parentId, isDeleted: false })
+        .find({
+          parentId: Types.ObjectId.createFromHexString(parentId),
+          isDeleted: false,
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate({ path: 'author', select: 'username nickname avatar role' })
         .lean()
         .exec(),
-      this.flowModel.countDocuments({ parentId, isDeleted: false }),
+      this.flowModel.countDocuments({
+        parentId: Types.ObjectId.createFromHexString(parentId),
+        isDeleted: false,
+      }),
     ]);
 
     return {
