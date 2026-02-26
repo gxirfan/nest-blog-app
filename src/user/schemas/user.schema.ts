@@ -64,11 +64,11 @@ export class User {
   @Prop({ required: true, trim: true, maxLength: 50 })
   nickname: string;
 
-  @Prop({ required: true, trim: true, maxLength: 50 })
-  firstName: string;
+  @Prop({ required: false, trim: true, maxLength: 50, default: null })
+  firstName?: string;
 
-  @Prop({ required: true, trim: true, maxLength: 50 })
-  lastName: string;
+  @Prop({ required: false, trim: true, maxLength: 50, default: null })
+  lastName?: string;
 
   @Prop({
     required: false,

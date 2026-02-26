@@ -5,8 +5,8 @@ export interface IUser extends IAuditFields {
   id: string;
   username: string;
   nickname: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   bio?: string;
   email: string;
   isEmailVerified: boolean;

@@ -5,8 +5,8 @@ export class UserResponseDto implements IUserBaseProfile, IAuditFields {
   id: string;
   username: string;
   nickname?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   bio?: string;
   email: string;
   isEmailVerified: boolean;
@@ -29,8 +29,8 @@ export class UserResponseWithRecoveryCodesDto
   id: string;
   username: string;
   nickname?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   bio?: string;
   email: string;
   recoveryCodes: string[];
