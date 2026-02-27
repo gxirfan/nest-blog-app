@@ -18,35 +18,29 @@ export class ResponseWrapperInterceptor<T> implements NestInterceptor<
   IBaseResponse<T>
 > {
   constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+
   intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<IBaseResponse<T>> {
     const ctx = context.switchToHttp();
     const response = ctx.getResponse();
-
-    const message = this.reflector.get<string>(
+    const messageFromDecorator = this.reflector.get<string>(
       RESPONSE_MESSAGE_KEY,
       context.getHandler(),
     );
 
     return next.handle().pipe(
-      map((data) => {
-        if (
-          data === null ||
-          data === undefined ||
-          (data.statusCode && data.success !== undefined)
-        ) {
-          return data;
+      map((res) => {
+        if (res && res.success !== undefined && res.statusCode !== undefined) {
+          return res;
         }
 
         return {
           statusCode: response.statusCode || HttpStatus.OK,
           success: true,
-
-          message: message || data.message || 'Success.',
-
-          data: data,
+          message: messageFromDecorator || res?.message || 'Success.',
+          data: res?.data ?? res,
         };
       }),
     );

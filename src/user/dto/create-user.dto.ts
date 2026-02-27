@@ -9,7 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { UserGender } from '../schemas/user.schema';
+import { UserGender } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import { IsAgeValid } from '../validators/min-age-custom.validator';
 
@@ -29,7 +29,8 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
     const cleaned = value.trim().replace(/\s+/g, ' ');
     return cleaned === '' ? undefined : cleaned;
   })
@@ -37,8 +38,8 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
-    if (typeof value !== 'string') return value;
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
     return value.trim().replace(/\s+/g, ' ');
   })
   @MaxLength(50, { message: 'First name must be at most 50 characters long.' })
@@ -46,16 +47,18 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
-    if (typeof value !== 'string') return value;
-    return value.trim().replace(/\s+/g, ' ');
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    return cleaned === '' ? undefined : cleaned;
   })
   @MaxLength(50, { message: 'Last name must be at most 50 characters long.' })
   lastName?: string;
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
     const cleaned = value.trim().replace(/\s+/g, ' ');
     return cleaned === '' ? undefined : cleaned;
   })
@@ -67,9 +70,9 @@ export class CreateUserRequestDto {
   @MaxLength(100, { message: 'Email must be at most 100 characters long.' })
   email: string;
 
-  @IsDate()
   @IsNotEmpty({ message: 'Birth date is required.' })
   @Type(() => Date)
+  @IsDate()
   @IsAgeValid({
     message: 'Identity Access Denied: Minimum age requirement is 18.',
   })
@@ -91,7 +94,8 @@ export class CreateUserRequestDto {
 
   @IsString()
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
     const cleaned = value.trim().replace(/\s+/g, ' ');
     return cleaned === '' ? undefined : cleaned;
   })
@@ -99,8 +103,10 @@ export class CreateUserRequestDto {
 
   @IsEnum(UserGender)
   @IsOptional()
-  @Transform(({ value }: { value: string }) => {
-    return value === '' ? undefined : value;
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') return undefined;
+    const upperValue = value.trim().toUpperCase();
+    return upperValue === '' ? undefined : upperValue;
   })
   gender?: UserGender;
 

@@ -34,25 +34,20 @@ export class ContactController {
   async handleContactSubmission(
     @Body() data: CreateContactDto,
   ): Promise<ContactResponseDto> {
-    return ContactMapper.toSingleResponseDto(
-      await this.contactService.handleContactSubmission(data),
-    );
+    const result = await this.contactService.handleContactSubmission(data);
+    return ContactMapper.toSingleResponseDto(result);
   }
 
   @UseGuards(AuthenticatedGuard, AdminGuard)
   @Get()
   @ResponseMessage('All contact messages retrieved successfully')
   async findAll(
-    // Extract pagination parameters from the query string
     @Query() paginationQueryDto: PaginationQueryDto,
   ): Promise<IPaginationResponse<ContactResponseDto>> {
-    // Fetch paginated data from the service
     const paginatedData =
       await this.contactService.findAllPaginated(paginationQueryDto);
-
-    // Map the documents to DTOs while preserving the pagination structure
     return {
-      data: ContactMapper.toResponseDto(paginatedData.data),
+      data: ContactMapper.toResponseDtoList(paginatedData.data),
       meta: paginatedData.meta,
     };
   }
@@ -61,9 +56,8 @@ export class ContactController {
   @Get(':id')
   @ResponseMessage('Contact message retrieved successfully')
   async findOneById(@Param('id') id: string): Promise<ContactResponseDto> {
-    return ContactMapper.toSingleResponseDto(
-      await this.contactService.findOneById(id),
-    );
+    const result = await this.contactService.findOneById(Number(id));
+    return ContactMapper.toSingleResponseDto(result);
   }
 
   @UseGuards(AuthenticatedGuard, AdminGuard)
@@ -76,7 +70,6 @@ export class ContactController {
       await this.contactService.findOneBySlug(slug),
     );
   }
-
   @UseGuards(AuthenticatedGuard, AdminGuard)
   @Patch(':id')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -85,17 +78,15 @@ export class ContactController {
     @Param('id') id: string,
     @Body() data: CreateContactDto,
   ): Promise<ContactResponseDto> {
-    return ContactMapper.toSingleResponseDto(
-      await this.contactService.update(id, data),
-    );
+    const result = await this.contactService.update(Number(id), data);
+    return ContactMapper.toSingleResponseDto(result);
   }
 
   @UseGuards(AuthenticatedGuard, AdminGuard)
   @Delete(':id')
   @ResponseMessage('Contact message deleted successfully')
   async delete(@Param('id') id: string): Promise<ContactResponseDto> {
-    return ContactMapper.toSingleResponseDto(
-      await this.contactService.delete(id),
-    );
+    const result = await this.contactService.delete(Number(id));
+    return ContactMapper.toSingleResponseDto(result);
   }
 }

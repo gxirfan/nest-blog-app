@@ -1,46 +1,46 @@
-import { FlowDocument } from '../schemas/flow.schema';
+import { FlowEntity } from '../entities/flow.entity';
 import { FlowResponseDto } from '../dto/flow-response.dto';
-import { UserDocument } from '../../user/schemas/user.schema';
+import { UserEntity } from 'src/user/entities/user.entity';
+
+export type FlowWithRelations = FlowEntity & {
+  author?: Partial<UserEntity> | null;
+  parent?: Partial<FlowEntity> | null;
+};
 
 export class FlowMapper {
-  public static toResponseDto(document: FlowDocument): FlowResponseDto {
-    const doc = document.toObject ? document.toObject() : document || {};
-    const id = doc._id ? doc._id.toString() : doc.id;
-    delete doc._id;
-    delete doc.__v;
+  public static toSingleResponseDto(flow: FlowWithRelations): FlowResponseDto {
+    if (!flow) return null as any;
 
-    const author = doc.author as unknown as UserDocument;
-    const parentId = doc.parentId as unknown as FlowDocument;
+    const author = flow.author;
+    const parent = flow.parent;
 
     return {
-      id,
-      content: doc.content || '',
+      id: flow.id,
+      content: flow.content || '',
+      slug: flow.slug || '',
+      replyCount: flow.replyCount || 0,
+
       author: {
-        id: author?._id?.toString() || '',
-        username: author?.username || '',
+        id: author?.id ?? 0,
+        username: author?.username || 'unknown',
         nickname: author?.nickname || '',
-        role: author?.role || 'user',
-        avatar: author?.avatar || null || undefined,
+        role: author?.role || 'USER',
+        avatar: author?.avatar || null,
       },
-      parentId: parentId?._id?.toString() || parentId?.id || undefined,
-      parentContent: parentId?.content || '',
-      slug: doc.slug || '',
-      parentSlug: parentId?.slug || '',
-      replyCount: doc.replyCount || 0,
-      createdAt:
-        doc.createdAt instanceof Date
-          ? doc.createdAt.toISOString()
-          : doc.createdAt,
-      updatedAt:
-        doc.updatedAt instanceof Date
-          ? doc.updatedAt.toISOString()
-          : doc.updatedAt,
+
+      parentId: flow.parentId ?? null,
+      parentContent: parent?.content || null,
+      parentSlug: parent?.slug || null,
+
+      createdAt: flow.createdAt instanceof Date ? flow.createdAt : new Date(),
+      updatedAt: flow.updatedAt instanceof Date ? flow.updatedAt : new Date(),
     };
   }
 
   public static toResponseDtoList(
-    documents: FlowDocument[],
+    flows: FlowWithRelations[],
   ): FlowResponseDto[] {
-    return documents.map((doc) => this.toResponseDto(doc));
+    if (!Array.isArray(flows) || flows.length === 0) return [];
+    return flows.map((flow) => this.toSingleResponseDto(flow));
   }
 }

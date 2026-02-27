@@ -1,92 +1,125 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Vote, VoteDocument } from './schemas/vote.schema';
-import { EntityType } from './enums/entity-type.enum';
-import { PostsService } from '../posts/posts.service';
+import { Injectable } from '@nestjs/common';
+import { EntityType } from '@prisma/client';
+import { PostsService } from '../post/posts.service';
+import { UserService } from '../../user/user.service';
 import { GetVoteStatusDto } from './dtos/get-vote-status.dto';
 import { CreateVoteDto } from './dtos/create-vote.dto';
-import { UserService } from '../../user/user.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { VoteCreatedEvent } from 'src/notification/events/notification.events';
-import { Types } from 'mongoose';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { VoteEntity } from './entities/vote.entity';
 
 @Injectable()
 export class VoteService {
-  private readonly MAX_CLAPS_PER_USER = 1;
-
   constructor(
-    @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
+    private prisma: PrismaService,
     private postService: PostsService,
     private userService: UserService,
     private eventEmitter: EventEmitter2,
-    // @InjectModel(Topic.name) private topicModel: Model<TopicDocument>,
   ) {}
 
   async findOneByUser(
-    userId: string,
+    userId: number,
     queryDto: GetVoteStatusDto,
-  ): Promise<VoteDocument | null> {
+  ): Promise<VoteEntity | null> {
     const { postId, type } = queryDto;
-
-    const vote = await this.voteModel
-      .findOne({
-        userId: new Types.ObjectId(userId),
-        postId: new Types.ObjectId(postId),
-        type,
-      })
-      .populate({
-        path: 'userId',
-        select: 'username role nickname firstName lastName email avatar',
-      })
-      .populate({ path: 'postId', select: 'title content slug' })
-      .exec();
-
-    if (!vote) return null;
-
-    return vote;
+    const formattedType = type.toUpperCase() as EntityType;
+    return this.prisma.vote.findUnique({
+      where: {
+        userId_postId_type: {
+          userId,
+          postId: Number(postId),
+          type: formattedType,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            username: true,
+            role: true,
+            nickname: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        post: {
+          select: {
+            title: true,
+            content: true,
+            slug: true,
+          },
+        },
+      },
+    });
   }
 
-  async findUserVotedPostList(userId: string): Promise<VoteDocument[]> {
-    return this.voteModel
-      .find({
-        userId: new Types.ObjectId(userId),
-        type: EntityType.POST,
-      })
-      .populate({ path: 'postId', select: 'title slug content score' })
-      .populate({ path: 'userId', select: 'username nickname' })
-      .exec();
+  async findUserVotedPostList(userId: number): Promise<VoteEntity[]> {
+    return this.prisma.vote.findMany({
+      where: {
+        userId,
+        type: EntityType.POST as unknown as EntityType,
+      },
+      include: {
+        post: {
+          select: { title: true, slug: true, content: true, score: true },
+        },
+        user: {
+          select: { username: true, nickname: true },
+        },
+      },
+    });
   }
 
   async createVote(
-    userId: string,
+    userId: number,
     voteDto: CreateVoteDto,
-  ): Promise<VoteDocument | null> {
+  ): Promise<VoteEntity | null> {
     const { postId, type, direction } = voteDto;
-    const filter = {
-      userId: new Types.ObjectId(userId),
-      postId: new Types.ObjectId(postId),
-      type,
-    };
+    const pId = Number(postId);
+    const formattedType = type.toUpperCase() as EntityType;
+    const existingVote = await this.prisma.vote.findUnique({
+      where: {
+        userId_postId_type: {
+          userId,
+          postId: pId,
+          type: formattedType,
+        },
+      },
+    });
 
-    const existingVote = await this.voteModel.findOne(filter);
-    const existingDirection = existingVote ? existingVote.direction : 0;
+    let result: VoteEntity | null = null;
 
-    let result: VoteDocument | null = null;
-
-    if (existingDirection === direction || direction === 0) {
-      await this.voteModel.findOneAndDelete(filter);
+    if (
+      existingVote &&
+      (existingVote.direction === direction || direction === 0)
+    ) {
+      await this.prisma.vote.delete({
+        where: { id: existingVote.id },
+      });
       result = null;
     } else {
-      result = await this.voteModel.findOneAndUpdate(
-        filter,
-        { $set: { direction: direction } },
-        { upsert: true, new: true },
-      );
+      result = await this.prisma.vote.upsert({
+        where: {
+          userId_postId_type: {
+            userId,
+            postId: pId,
+            type: formattedType,
+          },
+        },
+        update: { direction },
+        create: {
+          userId,
+          postId: pId,
+          type: formattedType,
+          direction,
+        },
+      });
     }
 
     if (result) {
-      const post = await this.postService.findOne(postId);
+      const post = await this.postService.findOne(pId);
       const voter = await this.userService.findOneById(userId);
       if (post) {
         this.eventEmitter.emit(
@@ -98,53 +131,36 @@ export class VoteService {
             userId,
             voter.username,
             voter.nickname,
-            voteDto.direction,
-            (post.userId as any).id,
+            direction,
+            post.userId,
           ),
         );
       }
     }
 
-    //Denormalization
-    await this.updateEntityTotalScores(new Types.ObjectId(postId), type);
+    await this.updateEntityTotalScores(pId, formattedType);
 
     return result;
   }
 
-  private getEntityService(type: EntityType): any {
-    switch (type) {
-      case EntityType.POST:
-        return this.postService;
-      default:
-        throw new NotFoundException(`Invalid entity type: ${type}`);
-    }
-  }
-
   async updateEntityTotalScores(
-    postId: Types.ObjectId,
+    postId: number,
     type: EntityType,
   ): Promise<void> {
-    const aggregationResult = await this.voteModel.aggregate([
-      { $match: { postId, type } },
-      {
-        $group: {
-          _id: null,
-          score: { $sum: '$direction' },
-          upvotes: { $sum: { $cond: [{ $eq: ['$direction', 1] }, 1, 0] } },
-          downvotes: { $sum: { $cond: [{ $eq: ['$direction', -1] }, 1, 0] } },
-        },
-      },
+    const stats = await this.prisma.vote.groupBy({
+      by: ['postId', 'type'],
+      where: { postId, type },
+      _sum: { direction: true },
+      _count: { _all: true },
+    });
+
+    const [upvotes, downvotes] = await Promise.all([
+      this.prisma.vote.count({ where: { postId, type, direction: 1 } }),
+      this.prisma.vote.count({ where: { postId, type, direction: -1 } }),
     ]);
 
-    const data = aggregationResult[0] || {};
+    const score = stats[0]?._sum?.direction || 0;
 
-    const entityService = this.getEntityService(type);
-
-    await entityService.updateTotalScores(
-      postId,
-      data.score || 0,
-      data.upvotes || 0,
-      data.downvotes || 0,
-    );
+    await this.postService.updateTotalScores(postId, score, upvotes, downvotes);
   }
 }

@@ -15,13 +15,12 @@ import { UserResponseDto } from 'src/user/dto/user-response.dto';
 import { UpdateUserByAdminDto } from 'src/user/dto/update-user.dto';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated.guard';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
-import { TagResponseDto } from 'src/forum/tags/dto/tag-response.dto';
-import { TagMapper } from 'src/forum/tags/mappers/tag.mapper';
-import { UpdateTagDto } from 'src/forum/tags/dto/update-tag.dto';
-import { TopicResponseDto } from 'src/forum/topics/dto/topic-response.dto';
-import { TopicMapper } from 'src/forum/topics/mappers/topic.mapper';
-import { UpdateTopicDto } from 'src/forum/topics/dto/update-topic.dto';
-import { PostMapper } from 'src/forum/posts/mappers/post.mapper';
+import { TagResponseDto } from 'src/forum/tag/dto/tag-response.dto';
+import { TagMapper } from 'src/forum/tag/mappers/tag.mapper';
+import { UpdateTagDto } from 'src/forum/tag/dto/update-tag.dto';
+import { TopicResponseDto } from 'src/forum/topic/dto/topic-response.dto';
+import { TopicMapper } from 'src/forum/topic/mappers/topic.mapper';
+import { UpdateTopicDto } from 'src/forum/topic/dto/update-topic.dto';
 import { AdminService } from './admin.service';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { TransformInterceptor } from 'src/common/interceptors/transform.interceptor';
@@ -31,7 +30,10 @@ import { IPaginationResponse } from 'src/common/interfaces/pagination-response.i
 import { ContactResponseDto } from 'src/contact/dto/contact-response.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/user/schemas/user.schema';
+import { UserRole } from '@prisma/client';
+import { FlowResponseDto } from 'src/flow/dto/flow-response.dto';
+import { PostMapper } from 'src/forum/post/mappers/post.mapper';
+import { PostResponseDto } from 'src/forum/post/dto/post-response.dto';
 
 @UseGuards(AuthenticatedGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.MODERATOR)
@@ -90,7 +92,7 @@ export class AdminController {
   @Get('get-tags')
   @ResponseMessage('Tags fetched successfully.')
   async findAllTags(): Promise<TagResponseDto[]> {
-    return TagMapper.toResponseDto(await this.adminService.findAllTags());
+    return TagMapper.toResponseDtoList(await this.adminService.findAllTags());
   }
 
   @Get('get-tag/:id')
@@ -114,17 +116,17 @@ export class AdminController {
 
   @Delete('delete-tag/:id')
   @ResponseMessage('Tag deleted successfully.')
-  async tagDeleteOneById(@Param('id') id: string): Promise<TagResponseDto> {
-    return TagMapper.toSingleResponseDto(
-      await this.adminService.deleteTagById(id),
-    );
+  async tagDeleteOneById(@Param('id') id: string): Promise<void> {
+    await this.adminService.deleteTagById(id);
   }
 
   //topic
   @Get('get-topics')
   @ResponseMessage('Topics fetched successfully.')
   async findAllTopics(): Promise<TopicResponseDto[]> {
-    return TopicMapper.toResponseDto(await this.adminService.findAllTopics());
+    return TopicMapper.toResponseDtoList(
+      await this.adminService.findAllTopics(),
+    );
   }
 
   @Get('get-topic/:id')
@@ -148,24 +150,22 @@ export class AdminController {
 
   @Delete('delete-topic/:id')
   @ResponseMessage('Topic deleted successfully.')
-  async topicDeleteOneById(@Param('id') id: string): Promise<TopicResponseDto> {
-    return TopicMapper.toSingleResponseDto(
-      await this.adminService.deleteTopicById(id),
-    );
+  async topicDeleteOneById(@Param('id') id: string): Promise<void> {
+    await this.adminService.deleteTopicById(id);
   }
 
   //post
   @Delete('delete-post/:id')
   @ResponseMessage('Post deleted successfully.')
-  async deletePost(@Param('id') id: string) {
-    return PostMapper.toSingleResponseDto(
-      await this.adminService.deletePostById(id),
-    );
+  async deletePost(@Param('id') id: string): Promise<void> {
+    await this.adminService.deletePostById(id);
   }
 
   @Get('get-flow-posts')
   @ResponseMessage('Flow posts fetched successfully.')
-  async findAllFlowPosts(@Query() paginationQueryDto: PaginationQueryDto) {
+  async findAllFlowPosts(
+    @Query() paginationQueryDto: PaginationQueryDto,
+  ): Promise<IPaginationResponse<FlowResponseDto>> {
     const result = await this.adminService.findAllFlowPosts(paginationQueryDto);
     return {
       data: FlowMapper.toResponseDtoList(result.data),
@@ -182,7 +182,7 @@ export class AdminController {
   ): Promise<IPaginationResponse<ContactResponseDto>> {
     const result = await this.adminService.findAllContacts(paginationQueryDto);
     return {
-      data: ContactMapper.toResponseDto(result.data),
+      data: ContactMapper.toResponseDtoList(result.data),
       meta: result.meta,
     };
   }
@@ -192,6 +192,24 @@ export class AdminController {
   async findOneContactBySlug(@Param('slug') slug: string) {
     return ContactMapper.toSingleResponseDto(
       await this.adminService.findOneContactBySlug(slug),
+    );
+  }
+
+  //posts
+  @Get('get-posts')
+  @ResponseMessage('Posts fetched successfully.')
+  async findAllPosts(): Promise<PostResponseDto[]> {
+    return PostMapper.toResponseDtoList(await this.adminService.findAllPosts());
+  }
+
+  @Get('get-post/:slug')
+  @ResponseMessage('Post fetched successfully')
+  async findOneBySlug(
+    @Param('slug') slug: string,
+    @Req() req,
+  ): Promise<PostResponseDto> {
+    return PostMapper.toSingleResponseDto(
+      await this.adminService.findOnePostBySlug(Number(req.user.id), slug),
     );
   }
 }

@@ -1,10 +1,10 @@
-import { IsIn, IsInt, IsMongoId, IsNotEmpty, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, Max, Min } from 'class-validator';
 import { EntityType } from '../enums/entity-type.enum';
 
 export class CreateVoteDto {
-  @IsMongoId()
+  @IsInt()
   @IsNotEmpty()
-  postId: string;
+  postId: number;
 
   @IsIn(Object.values(EntityType))
   @IsNotEmpty()

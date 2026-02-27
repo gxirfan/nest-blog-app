@@ -1,10 +1,13 @@
-import { IsIn, IsString } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty } from 'class-validator';
 import { EntityType } from '../enums/entity-type.enum';
+import { Type } from 'class-transformer';
 
 export class GetVoteStatusDto {
-    @IsString()
-    postId: string;
+  @IsInt()
+  @IsNotEmpty()
+  @Type(() => Number)
+  postId: number;
 
-    @IsIn(Object.values(EntityType))
-    type: EntityType;
+  @IsIn(Object.values(EntityType))
+  type: EntityType;
 }

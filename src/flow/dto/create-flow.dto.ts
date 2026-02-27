@@ -1,10 +1,4 @@
-import {
-  IsNotEmpty,
-  IsString,
-  MaxLength,
-  IsOptional,
-  IsMongoId,
-} from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateFlowDto {
@@ -14,8 +8,7 @@ export class CreateFlowDto {
   content: string;
 
   @IsOptional()
-  @IsMongoId()
-  parentId?: string;
+  parentId?: number;
 
   @IsString()
   @IsOptional()

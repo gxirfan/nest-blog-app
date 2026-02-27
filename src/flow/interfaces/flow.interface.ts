@@ -1,11 +1,11 @@
 import { IAuditFields } from 'src/common/interfaces/common.interface';
 
 export interface IFlow extends IAuditFields {
-  id: string;
+  id: number;
   content: string;
-  author: string;
+  author: number;
   slug: string;
-  parentId: string | null;
+  parentId: number | null;
   replyCount: number;
   isDeleted: boolean;
 }

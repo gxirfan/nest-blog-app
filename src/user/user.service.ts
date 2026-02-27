@@ -8,8 +8,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { User, UserDocument, UserRole } from './schemas/user.schema';
+import { PrismaService } from '../prisma/prisma.service';
+import { UserRole, Prisma, UserGender } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   UpdateMeDto,
@@ -17,124 +17,121 @@ import {
   UpdateUserPasswordDto,
 } from './dto/update-user.dto';
 import { CreateUserRequestDto } from './dto/create-user.dto';
-import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
+import { UserEntity } from './entities/user.entity';
+
 @Injectable()
 export class UserService {
-  constructor(
-    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
+
   async comparePassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
-  async isUsernameAvailable(username: string): Promise<boolean> {
-    const count = await this.userModel.countDocuments({
-      username: username.toLowerCase(),
-    });
 
+  async isUsernameAvailable(username: string): Promise<boolean> {
+    const count = await this.prisma.user.count({
+      where: { username: username.toLowerCase() },
+    });
     return count === 0;
   }
-  //create
+
   async create(
     userDto: CreateUserRequestDto,
-  ): Promise<UserDocument & { recoveryCodes: string[] }> {
+  ): Promise<UserEntity & { recoveryCodes: string[] }> {
     try {
       const hashedPassword = await this.hashPassword(userDto.password);
 
-      if (!userDto.nickname) userDto.nickname = userDto.username;
-
-      const newUser = new this.userModel({
-        ...userDto,
-        passwordHash: hashedPassword,
+      const { password, ...prismaData } = userDto;
+      const savedUser = await this.prisma.user.create({
+        data: {
+          ...prismaData,
+          username: userDto.username.toLowerCase(),
+          email: userDto.email.toLowerCase(),
+          passwordHash: hashedPassword,
+          nickname: userDto.nickname || userDto.username,
+        },
       });
 
-      const savedUser = await newUser.save();
-
-      const recoveryCodes = await this.generateAndSaveRecoveryCodes(
+      const plainRecoveryCodes = await this.generateAndSaveRecoveryCodes(
         savedUser.id,
       );
 
-      const userWithCodes = savedUser.toObject();
-
-      userWithCodes.recoveryCodes = recoveryCodes;
-
-      // return mongoose document (js object) with recovery codes
-      return userWithCodes as UserDocument & { recoveryCodes: string[] };
+      return {
+        ...savedUser,
+        recoveryCodes: plainRecoveryCodes,
+      };
     } catch (error) {
-      if (error.code === 11000) {
-        // MongoDB Duplicate Key
-        throw new ConflictException('username or email is already taken.'); // 409 Conflict
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Username or email is already taken.');
       }
-      throw new InternalServerErrorException(
-        'User registration failed due to an unexpected error.',
-      );
+      throw new InternalServerErrorException('User registration failed.');
     }
   }
 
-  //read
-  async findAll(): Promise<UserDocument[]> {
-    const users = await this.userModel.find().sort({ createdAt: -1 }).exec();
-    if (!users) throw new NotFoundException('Users not found');
-    if (users.length === 0) throw new NotFoundException('Users not found');
-    return users;
+  async findAll(): Promise<UserEntity[]> {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  //using session serializer
-  async findOneByIdAsDocument(id: string): Promise<UserDocument | null> {
-    return (await this.userModel.findById(id).exec()) || null;
+  async findOneByIdAsDocument(id: number): Promise<UserEntity | null> {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
-  //using auth validation
-  async findOneByUsernameAsDocument(loginField: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({ $or: [{ username: loginField }, { email: loginField }] })
-      .select('+passwordHash')
-      .exec();
+  async findOneByUsernameAsDocument(loginField: string): Promise<UserEntity> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username: loginField }, { email: loginField }],
+      },
+    });
 
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  async findOneById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(id).exec();
+  async findOneById(id: number): Promise<UserEntity> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: Number(id) },
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  async findOneByUsername(username: string): Promise<UserDocument> {
-    const user = await this.userModel.findOne({ username }).exec();
+  async findOneByUsername(username: string): Promise<UserEntity> {
+    const user = await this.prisma.user.findUnique({ where: { username } });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  //using-for-password-reset
-  async findOneByLoginField(loginField: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({
-        $or: [{ email: loginField.toLowerCase() }, { username: loginField }],
-      })
-      .select('+resetPasswordToken')
-      .exec();
+  async findOneByLoginField(loginField: string): Promise<UserEntity> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: loginField.toLowerCase() }, { username: loginField }],
+      },
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  async findOneByResetToken(token: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({
+  async findOneByResetToken(token: string): Promise<UserEntity> {
+    const user = await this.prisma.user.findFirst({
+      where: {
         resetPasswordToken: token,
-        resetPasswordExpiresAt: { $gt: Date.now() },
-      })
-      .exec();
-    if (!user) throw new NotFoundException('User not found');
+        resetPasswordExpiresAt: { gt: new Date() },
+      },
+    });
+    if (!user) throw new NotFoundException('User token invalid or expired');
     return user;
   }
 
-  async generateAndSaveRecoveryCodes(userId: string): Promise<string[]> {
+  async generateAndSaveRecoveryCodes(userId: number): Promise<string[]> {
     const NUMBER_OF_CODES = 5;
     const codes: string[] = [];
     const hashedCodes: string[] = [];
@@ -146,104 +143,82 @@ export class UserService {
       hashedCodes.push(hashed);
     }
 
-    await this.userModel
-      .updateOne({ _id: userId }, { recoveryCodes: hashedCodes })
-      .exec();
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { recoveryCodes: hashedCodes },
+    });
 
     return codes;
   }
 
-  async findOneByUsernameWithCodes(username: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({ username })
-      .select('+recoveryCodes')
-      .exec();
+  async findOneByUsernameWithCodes(username: string): Promise<UserEntity> {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async findOneByUsernameForPublicProfile(
     username: string,
-  ): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({ username })
-      .select('+isEmailPublic')
-      .exec();
+  ): Promise<UserEntity> {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  //update
-  async update(id: string, user: UpdateMeDto): Promise<UserDocument> {
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(id, user, { new: true })
-      .exec();
-    if (!updatedUser) throw new NotFoundException('User not found');
-    return updatedUser;
+  async update(id: number, data: UpdateMeDto): Promise<UserEntity> {
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data,
+      });
+    } catch (e) {
+      throw new NotFoundException('User not found');
+    }
   }
 
   async updateUserMedia(
-    userId: string,
+    userId: number,
     updatePayload: { avatar?: string; cover?: string },
-  ): Promise<UserDocument> {
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(userId, { $set: updatePayload }, { new: true })
-      .exec();
-
-    if (!updatedUser)
-      throw new HttpException('User not found.', HttpStatus.NOT_FOUND);
-
-    return updatedUser;
+  ): Promise<UserEntity> {
+    return this.update(userId, updatePayload);
   }
 
   async updatePassword(
-    id: string,
-    user: UpdateUserPasswordDto,
-  ): Promise<UserDocument> {
-    const foundUser = await this.userModel
-      .findById(id)
-      .select('+passwordHash')
-      .exec();
-    if (!foundUser) throw new NotFoundException('User not found');
+    id: number,
+    dto: UpdateUserPasswordDto,
+  ): Promise<UserEntity> {
+    const user = await this.findOneById(id);
 
     const isMatch = await this.comparePassword(
-      user.oldPassword,
-      foundUser.passwordHash,
+      dto.oldPassword,
+      user.passwordHash,
     );
-    if (!isMatch) {
-      throw new BadRequestException('Old password is incorrect');
-    }
+    if (!isMatch) throw new BadRequestException('Old password is incorrect');
 
-    foundUser.passwordHash = await this.hashPassword(user.newPassword);
-    return await foundUser.save();
+    const newPasswordHash = await this.hashPassword(dto.newPassword);
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: newPasswordHash },
+    });
   }
 
-  //admin
   async updateUserById(
-    id: string,
-    user: UpdateUserByAdminDto,
-    adminId: string,
-  ): Promise<UserDocument> {
-    // const updatedUser = await this.userModel
-    //   .findByIdAndUpdate(id, user, { new: true })
-    //   .exec();
-    // if (!updatedUser) throw new NotFoundException('User not found');
-    // return updatedUser;
-
-    const existingUser = await this.userModel.findById(id).exec();
-
-    if (!existingUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    const adminUser = await this.userModel.findById(adminId).exec();
-    if (!adminUser) {
-      throw new NotFoundException('Admin user not found');
-    }
+    id: number,
+    updateDto: UpdateUserByAdminDto,
+    adminId: number,
+  ): Promise<UserEntity> {
+    const [existingUser, adminUser] = await Promise.all([
+      this.findOneById(id),
+      this.findOneById(adminId),
+    ]);
 
     if (existingUser.role === UserRole.ADMIN) {
       throw new ForbiddenException(
-        'Admin accounts cannot be modified via this endpoint for security reasons.',
+        'Admin accounts cannot be modified via this endpoint.',
       );
     }
 
@@ -254,56 +229,42 @@ export class UserService {
       throw new ForbiddenException('Only admin or moderator can update user.');
     }
 
-    if (
-      existingUser.role &&
-      adminUser.role &&
-      adminUser.role === existingUser.role
-    ) {
-      throw new ForbiddenException('You cannot update this user.');
+    if (adminUser.role === existingUser.role) {
+      throw new ForbiddenException(
+        'You cannot update a user with the same role.',
+      );
     }
 
-    if (adminUser.role === UserRole.MODERATOR)
-      if (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR)
-        throw new ForbiddenException('You cannot update this user.');
+    if (adminUser.role === UserRole.MODERATOR) {
+      if (
+        updateDto.role === UserRole.ADMIN ||
+        updateDto.role === UserRole.MODERATOR
+      ) {
+        throw new ForbiddenException(
+          'Moderators cannot promote users to Admin/Moderator.',
+        );
+      }
+    }
 
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(id, user, { new: true })
-      .exec();
-
-    if (!updatedUser) throw new NotFoundException('User not found');
-
-    return updatedUser;
+    return this.prisma.user.update({
+      where: { id },
+      data: updateDto as Prisma.UserUpdateInput,
+    });
   }
 
   async updatePasswordById(
-    id: string,
+    id: number,
     newPassword: string,
-    adminId: string,
-  ): Promise<UserDocument> {
-    // const updatedUser = await this.userModel
-    //   .findByIdAndUpdate(
-    //     id,
-    //     { passwordHash: await this.hashPassword(newPassword) },
-    //     { new: true },
-    //   )
-    //   .exec();
-    // if (!updatedUser) throw new NotFoundException('User not found');
-    // return updatedUser;
-
-    const existingUser = await this.userModel.findById(id).exec();
-
-    if (!existingUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    const adminUser = await this.userModel.findById(adminId).exec();
-    if (!adminUser) {
-      throw new NotFoundException('Admin user not found');
-    }
+    adminId: number,
+  ): Promise<UserEntity> {
+    const [existingUser, adminUser] = await Promise.all([
+      this.findOneById(id),
+      this.findOneById(adminId),
+    ]);
 
     if (existingUser.role === UserRole.ADMIN) {
       throw new ForbiddenException(
-        'Admin accounts cannot be modified via this endpoint for security reasons.',
+        'Admin password cannot be changed via this endpoint.',
       );
     }
 
@@ -311,35 +272,27 @@ export class UserService {
       throw new ForbiddenException('Only admin can update user password.');
     }
 
-    existingUser.passwordHash = await this.hashPassword(newPassword);
-
-    return await existingUser.save();
+    const hashedPassword = await this.hashPassword(newPassword);
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: hashedPassword },
+    });
   }
 
-  async deleteUserById(id: string, adminId: string): Promise<UserDocument> {
-    const existingUser = await this.userModel.findById(id).exec();
-
-    if (!existingUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    const adminUser = await this.userModel.findById(adminId).exec();
-    if (!adminUser) {
-      throw new NotFoundException('Admin user not found');
-    }
+  async deleteUserById(id: number, adminId: number): Promise<UserEntity> {
+    const [existingUser, adminUser] = await Promise.all([
+      this.findOneById(id),
+      this.findOneById(adminId),
+    ]);
 
     if (existingUser.role === UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Admin accounts cannot be modified via this endpoint for security reasons.',
-      );
+      throw new ForbiddenException('Admin accounts cannot be deleted.');
     }
 
     if (adminUser.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admin can delete user.');
     }
 
-    const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
-    if (!deletedUser) throw new NotFoundException('User not found');
-    return deletedUser;
+    return this.prisma.user.delete({ where: { id } });
   }
 }

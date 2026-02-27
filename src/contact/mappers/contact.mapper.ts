@@ -1,42 +1,32 @@
 import { ContactResponseDto } from '../dto/contact-response.dto';
-import { ContactMessageDocument } from '../schemas/contact-message.schema';
+import { ContactMessageEntity } from '../entities/contact-message.entity';
 
 export class ContactMapper {
-  public static toResponseDto(
-    contactMessage: ContactMessageDocument[],
+  public static toResponseDtoList(
+    messages: ContactMessageEntity[],
   ): ContactResponseDto[] {
-    if (!contactMessage) return [];
-
-    const contactObject = contactMessage.map((contact) =>
-      contact.toObject({ virtuals: true }),
-    );
-
-    const response: ContactResponseDto[] = contactObject.map((contact) => ({
-      id: contact.id,
-      name: contact.name,
-      email: contact.email,
-      subject: contact.subject,
-      message: contact.message,
-      slug: contact.slug ?? '',
-      isRead: contact.isRead,
-      createdAt: contact.createdAt
-        ? contact.createdAt instanceof Date
-          ? contact.createdAt.toISOString()
-          : new Date(contact.createdAt).toISOString()
-        : new Date().toISOString(),
-      updatedAt: contact.updatedAt
-        ? contact.updatedAt instanceof Date
-          ? contact.updatedAt.toISOString()
-          : new Date(contact.updatedAt).toISOString()
-        : new Date().toISOString(),
-    }));
-
-    return response;
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+    return messages.map((message) => this.toSingleResponseDto(message));
   }
 
   public static toSingleResponseDto(
-    contactMessage: ContactMessageDocument,
+    message: ContactMessageEntity,
   ): ContactResponseDto {
-    return this.toResponseDto([contactMessage])[0];
+    if (!message) return null as any;
+
+    return {
+      id: message.id,
+      name: message.name,
+      email: message.email,
+      subject: message.subject,
+      message: message.message,
+      slug: message.slug ?? null,
+      isRead: message.isRead,
+
+      createdAt:
+        message.createdAt instanceof Date ? message.createdAt : new Date(),
+      updatedAt:
+        message.updatedAt instanceof Date ? message.updatedAt : new Date(),
+    };
   }
 }

@@ -4,8 +4,8 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { Observable } from 'rxjs';
-import { UserRole } from 'src/user/schemas/user.schema';
 
 @Injectable()
 export class AdminGuard implements CanActivate {

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { TagsModule } from './tags/tags.module';
-import { TopicsModule } from './topics/topics.module';
-import { PostsModule } from './posts/posts.module';
+import { TagsModule } from './tag/tags.module';
+import { TopicsModule } from './topic/topics.module';
+import { PostsModule } from './post/posts.module';
 
 @Module({
-    imports: [TagsModule, TopicsModule, PostsModule],
+  imports: [TagsModule, TopicsModule, PostsModule],
 })
 export class ForumModule {}

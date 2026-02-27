@@ -1,6 +1,6 @@
 export class SearchResultDto {
   type: 'user' | 'post' | 'tag' | 'topic' | 'flow';
-  id: string;
+  id: number;
   title: string;
   subTitle?: string;
   url: string;

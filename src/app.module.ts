@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ForumModule } from './forum/forum.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -23,13 +22,10 @@ import { FlowModule } from './flow/flow.module';
 import { AdminModule } from './admin/admin.module';
 import { SearchModule } from './search/search.module';
 import { redisStore } from 'cache-manager-redis-yet';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
-    // CacheModule.register({
-    //   ttl: 86400000,
-    //   isGlobal: true,
-    // }),
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
@@ -44,13 +40,6 @@ import { redisStore } from 'cache-manager-redis-yet';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URI'),
-      }),
-      inject: [ConfigService],
-    }),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
       serveRoot: '/',
@@ -58,6 +47,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     EventEmitterModule.forRoot({
       global: true,
     }),
+    PrismaModule,
     AdminModule,
     UserModule,
     NotificationModule,

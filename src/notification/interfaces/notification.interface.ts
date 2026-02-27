@@ -1,9 +1,9 @@
 export interface INotification {
-    recipientId: string;
-    senderId: string;
-    type: string;
-    message: string;
-    targetUrl: string;
-    relatedPostId: string;
-    isRead: boolean;
+  recipientId: number;
+  senderId: number;
+  type: string;
+  message: string;
+  targetUrl: string;
+  relatedPostId: number;
+  isRead: boolean;
 }

@@ -9,7 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { UserRole, UserStatus, UserGender } from '../schemas/user.schema';
+import { UserRole, UserStatus, UserGender } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import { IsAgeValid } from '../validators/min-age-custom.validator';
 
@@ -126,7 +126,11 @@ export class BaseUpdateUserDto {
 
   @IsOptional()
   @IsEnum(UserGender)
-  @Transform(({ value }) => (value === '' ? undefined : value))
+  @Transform(({ value }: { value: string }) =>
+    value === '' || value === null || value === undefined
+      ? undefined
+      : (value.toUpperCase() as UserGender),
+  )
   gender?: UserGender;
 
   @IsOptional()

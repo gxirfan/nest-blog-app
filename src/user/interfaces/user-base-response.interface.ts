@@ -1,14 +1,14 @@
 export interface IUserBaseProfile {
-  id: string;
+  id: number;
   username: string;
-  nickname?: string;
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
+  nickname: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  bio: string | null;
   email: string;
   birthDate: Date;
-  avatar?: string;
-  cover?: string;
-  location?: string;
-  gender?: string;
+  avatar: string | null;
+  cover: string | null;
+  location: string | null;
+  gender: string | null;
 }

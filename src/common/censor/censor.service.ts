@@ -26,7 +26,6 @@ export class CensorService {
       .replace(/[^a-z0-9şğüıöç]/gi, '')
       .replace(/(.)\1{1,}/g, '$1');
 
-    // Apply FILTER_REPLACEMENTS (e.g., @ -> a, 0 -> o)
     for (const [key, value] of Object.entries(replacements)) {
       normalizedText = normalizedText.split(key).join(value);
     }

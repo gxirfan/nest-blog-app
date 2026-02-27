@@ -2,12 +2,12 @@ import { IAuditFields } from 'src/common/interfaces/common.interface';
 import { IUserBaseProfile } from '../interfaces/user-base-response.interface';
 
 export class UserResponseDto implements IUserBaseProfile, IAuditFields {
-  id: string;
+  id: number;
   username: string;
-  nickname?: string;
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
+  nickname: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  bio: string | null;
   email: string;
   isEmailVerified: boolean;
   isEmailPublic: boolean;
@@ -17,21 +17,21 @@ export class UserResponseDto implements IUserBaseProfile, IAuditFields {
   createdAt: Date;
   updatedAt: Date;
   birthDate: Date;
-  avatar?: string;
-  cover?: string;
-  location?: string;
-  gender?: string;
+  avatar: string | null;
+  cover: string | null;
+  location: string | null;
+  gender: string | null;
 }
 
 export class UserResponseWithRecoveryCodesDto
   implements IUserBaseProfile, IAuditFields
 {
-  id: string;
+  id: number;
   username: string;
-  nickname?: string;
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
+  nickname: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  bio: string | null;
   email: string;
   recoveryCodes: string[];
   createdAt: Date;
@@ -42,8 +42,8 @@ export class UserResponseWithRecoveryCodesDto
   status: string;
   lastLoginAt: Date;
   birthDate: Date;
-  avatar?: string;
-  cover?: string;
-  location?: string;
-  gender?: string;
+  avatar: string | null;
+  cover: string | null;
+  location: string | null;
+  gender: string | null;
 }

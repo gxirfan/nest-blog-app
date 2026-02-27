@@ -23,7 +23,7 @@ import { ResponseMessage } from '../common/decorators/response-message.decorator
 import { UpdateFlowDto } from './dto/update-flow.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/user/schemas/user.schema';
+import { UserRole } from '@prisma/client';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 
 @UseInterceptors(TransformInterceptor)
@@ -40,8 +40,11 @@ export class FlowController {
     @Req() req,
     @Body() createFlowDto: CreateFlowDto,
   ): Promise<FlowResponseDto> {
-    const doc = await this.flowService.create(req.user.id, createFlowDto);
-    return FlowMapper.toResponseDto(doc);
+    const doc = await this.flowService.create(
+      Number(req.user.id),
+      createFlowDto,
+    );
+    return FlowMapper.toSingleResponseDto(doc);
   }
 
   @UseInterceptors(CacheInterceptor)
@@ -60,7 +63,7 @@ export class FlowController {
   @Get(':slug')
   async findOne(@Param('slug') slug: string): Promise<FlowResponseDto> {
     const flow = await this.flowService.findBySlug(slug);
-    return FlowMapper.toResponseDto(flow);
+    return FlowMapper.toSingleResponseDto(flow);
   }
 
   @Get(':slug/replies')
@@ -70,10 +73,7 @@ export class FlowController {
   ) {
     const flow = await this.flowService.findBySlug(slug);
 
-    const result = await this.flowService.findReplies(
-      flow._id.toString(),
-      query,
-    );
+    const result = await this.flowService.findReplies(flow.id, query);
     return {
       data: FlowMapper.toResponseDtoList(result.data),
       meta: result.meta,
@@ -89,7 +89,7 @@ export class FlowController {
     @Body() updateFlowDto: UpdateFlowDto,
   ): Promise<FlowResponseDto> {
     const doc = await this.flowService.updateBySlug(slug, updateFlowDto);
-    return FlowMapper.toResponseDto(doc);
+    return FlowMapper.toSingleResponseDto(doc);
   }
 
   @Get('username/:username')
@@ -113,7 +113,7 @@ export class FlowController {
   ): Promise<IPaginationResponse<FlowResponseDto>> {
     const result =
       await this.flowService.findAllByUserIdForLibraryMyFlowPostsPaginated(
-        req.user.id,
+        Number(req.user.id),
         query,
       );
     return {

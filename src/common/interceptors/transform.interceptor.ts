@@ -6,20 +6,23 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Document } from 'mongoose';
 
 function normalizeValue(value: any): any {
-  if (value == null) return value;
+  if (value === null || value === undefined) return value;
 
   if (Array.isArray(value)) {
     return value.map((item) => normalizeValue(item));
   }
 
-  if (value instanceof Document) {
-    return value.toObject({ virtuals: true });
+  if (typeof value === 'bigint') {
+    return value.toString();
   }
 
-  if (typeof value === 'object') {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === 'object' && value !== null) {
     const result: Record<string, any> = {};
 
     for (const key of Object.keys(value)) {
@@ -36,17 +39,23 @@ function normalizeValue(value: any): any {
 export class TransformInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      map((data: any) => {
-        if (!data) return data;
+      map((result: any) => {
+        if (!result) return result;
 
-        if (data.statusCode !== undefined && data.data !== undefined) {
+        if (result.data !== undefined && result.meta !== undefined) {
           return {
-            ...data,
-            data: normalizeValue(data.data),
+            message: result.message ?? 'Success',
+            data: {
+              data: normalizeValue(result.data),
+              meta: result.meta,
+            },
           };
         }
 
-        return normalizeValue(data);
+        return {
+          message: result.message ?? 'Success',
+          data: normalizeValue(result.data ?? result),
+        };
       }),
     );
   }

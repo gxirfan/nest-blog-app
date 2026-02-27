@@ -1,96 +1,109 @@
 import { Injectable } from '@nestjs/common';
-import { CreateSearchDto } from './dto/create-search.dto';
 import { ISearchService } from './interfaces/search-service.interface';
 import { SearchResultDto } from './dto/search-result.dto';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
-import { Types, Model } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument } from 'src/user/schemas/user.schema';
-import { Post, PostDocument } from 'src/forum/posts/schemas/post.schema';
-import { Flow, FlowDocument } from 'src/flow/schemas/flow.schema';
-import { Tag, TagDocument } from 'src/forum/tags/schemas/tag.schema';
-import { Topic, TopicDocument } from 'src/forum/topics/schemas/topic.schema';
-import { SearchLog, SearchLogDocument } from './entities/search.schema';
+import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SearchService implements ISearchService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Post.name) private postModel: Model<PostDocument>,
-    @InjectModel(Flow.name) private flowModel: Model<FlowDocument>,
-    @InjectModel(Tag.name) private tagModel: Model<TagDocument>,
-    @InjectModel(Topic.name) private topicModel: Model<TopicDocument>,
-    @InjectModel(SearchLog.name)
-    private searchLogModel: Model<SearchLogDocument>,
-  ) {}
-  private async logSearch(query: string, userId?: string) {
-    await this.searchLogModel.findOneAndUpdate(
-      { query: query.toLowerCase() },
-      {
-        $inc: { count: 1 },
-        $set: { userId: userId ? new Types.ObjectId(userId) : null },
+  constructor(private readonly prisma: PrismaService) {}
+
+  private async logSearch(query: string, userId?: number) {
+    const lowerQuery = query.toLowerCase();
+
+    await this.prisma.searchLog.upsert({
+      where: { query: lowerQuery },
+      update: {
+        count: { increment: 1 },
+        userId: userId || null,
       },
-      { upsert: true },
-    );
+      create: {
+        query: lowerQuery,
+        userId: userId || null,
+        count: 1,
+      },
+    });
   }
 
-  async search(
-    createSearchDto: CreateSearchDto,
-  ): Promise<IPaginationResponse<SearchResultDto>> {
-    const { paginationQueryDto, userId } = createSearchDto;
+  async search(params: {
+    paginationQueryDto: PaginationQueryDto;
+    userId?: number;
+  }): Promise<IPaginationResponse<SearchResultDto>> {
+    const { paginationQueryDto, userId } = params;
     const query = paginationQueryDto.q;
     const { page = 1, limit = 10 } = paginationQueryDto;
-    if (!query)
+
+    if (!query) {
       return {
         data: [],
         meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
       };
-
-    const searchRegex = new RegExp(query, 'i');
+    }
 
     void this.logSearch(query, userId);
 
+    const searchFilter = {
+      contains: query,
+      mode: Prisma.QueryMode.insensitive,
+    };
+
     const [users, posts, flows, tags, topics] = await Promise.all([
-      this.userModel
-        .find({ $or: [{ username: searchRegex }, { nickname: searchRegex }] })
-        .limit(limit)
-        .lean(),
-      this.postModel.find({ title: searchRegex }).limit(limit).lean(),
-      this.flowModel.find({ content: searchRegex }).limit(limit).lean(),
-      this.tagModel.find({ name: searchRegex }).limit(limit).lean(),
-      this.topicModel.find({ name: searchRegex }).limit(limit).lean(),
+      this.prisma.user.findMany({
+        where: {
+          OR: [{ username: searchFilter }, { nickname: searchFilter }],
+        },
+        take: Number(limit),
+      }),
+      this.prisma.post.findMany({
+        where: { title: searchFilter, status: true },
+        take: Number(limit),
+      }),
+      this.prisma.flow.findMany({
+        where: { content: searchFilter, isDeleted: false },
+        take: Number(limit),
+      }),
+      this.prisma.tag.findMany({
+        where: { title: searchFilter, status: true },
+        take: Number(limit),
+      }),
+      this.prisma.topic.findMany({
+        where: { title: searchFilter, status: true },
+        take: Number(limit),
+      }),
     ]);
 
     const combinedResults: SearchResultDto[] = [
       ...users.map((u) => ({
         type: 'user' as const,
-        id: u._id.toString(),
+        id: u.id,
         title: u.username,
         subTitle: u.nickname,
         url: u.username,
-        avatar: u.avatar,
+        avatar: u.avatar ?? undefined,
       })),
       ...posts.map((p) => ({
         type: 'post' as const,
-        id: p._id.toString(),
+        id: p.id,
         title: p.title,
         url: p.slug,
       })),
       ...flows.map((f) => ({
         type: 'flow' as const,
-        id: f._id.toString(),
+        id: f.id,
         title: f.content.substring(0, 60),
         url: f.slug,
       })),
       ...tags.map((t) => ({
         type: 'tag' as const,
-        id: t._id.toString(),
+        id: t.id,
         title: `#${t.title}`,
         url: t.slug,
       })),
       ...topics.map((tp) => ({
         type: 'topic' as const,
-        id: tp._id.toString(),
+        id: tp.id,
         title: tp.title,
         url: tp.slug,
       })),

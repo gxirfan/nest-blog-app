@@ -1,12 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { OnEvent } from '@nestjs/event-emitter';
-import {
-  Notification,
-  NotificationDocument,
-  NotificationType,
-} from './schemas/notification.schema';
+import { NotificationType, Notification, Prisma } from '@prisma/client';
 import {
   VoteCreatedEvent,
   ReplyCreatedEvent,
@@ -14,151 +9,155 @@ import {
 } from './events/notification.events';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
-import { Types } from 'mongoose';
+import { NotificationEntity } from './entities/notification.entity';
+
+const SENDER_INCLUDE = {
+  sender: {
+    select: {
+      id: true,
+      username: true,
+      nickname: true,
+      avatar: true,
+    },
+  },
+};
 
 @Injectable()
 export class NotificationService {
-  constructor(
-    @InjectModel(Notification.name)
-    private notificationModel: Model<NotificationDocument>,
-  ) {}
-
-  // --- EVENT LISTENERS ---
+  constructor(private readonly prisma: PrismaService) {}
 
   @OnEvent('vote.created')
   async handleVoteCreated(payload: VoteCreatedEvent) {
-    if (payload.voterId === payload.postOwnerId) return;
+    const voterId = Number(payload.voterId);
+    const ownerId = Number(payload.postOwnerId);
 
-    // if you want to send notification only for upvote: if (payload.direction !== 1) return;
+    if (voterId === ownerId) return;
 
-    const type =
-      payload.direction === 1
-        ? NotificationType.VOTE_UP
-        : NotificationType.VOTE_DOWN;
-    const action = payload.direction === 1 ? 'upvoted' : 'downvoted';
+    const isUpvote = payload.direction === 1;
+    const type = isUpvote
+      ? NotificationType.VOTE_UP
+      : NotificationType.VOTE_DOWN;
+    const action = isUpvote ? 'upvoted' : 'downvoted';
 
-    await this.create({
-      recipientId: Types.ObjectId.createFromHexString(payload.postOwnerId),
-      senderId: Types.ObjectId.createFromHexString(payload.voterId),
-      type: type,
+    await this.createNotification({
+      recipientId: ownerId,
+      senderId: voterId,
+      type,
       message: `@${payload.voterNickname} ${action} your entry: "${payload.postTitle.substring(0, 30)}..."`,
       targetUrl: payload.postSlug,
-      relatedPostId: Types.ObjectId.createFromHexString(payload.postId),
+      relatedPostId: Number(payload.postId),
     });
   }
 
   @OnEvent('post.reply')
   async handleReplyCreated(payload: ReplyCreatedEvent) {
-    if (payload.replierId === payload.postOwnerId) return;
+    const replierId = Number(payload.replierId);
+    const ownerId = Number(payload.postOwnerId);
 
-    await this.create({
-      recipientId: Types.ObjectId.createFromHexString(payload.postOwnerId),
-      senderId: Types.ObjectId.createFromHexString(payload.replierId),
+    if (replierId === ownerId) return;
+
+    await this.createNotification({
+      recipientId: ownerId,
+      senderId: replierId,
       type: NotificationType.POST_REPLY,
       message: `@${payload.replierNickname} replied to your entry: "${payload.parentPostTitle.substring(0, 30)}..."`,
       targetUrl: payload.replySlug,
-      relatedPostId: Types.ObjectId.createFromHexString(payload.parentPostId),
+      relatedPostId: Number(payload.parentPostId),
     });
   }
 
   @OnEvent('flow.replied')
   async handleFlowReplied(payload: FlowRepliedEvent) {
-    const message = `${payload.replierNickname} replied to your thread: "${payload.parentContent}..."`;
-
-    await this.create({
-      recipientId: Types.ObjectId.createFromHexString(payload.recipientId),
-      senderId: Types.ObjectId.createFromHexString(payload.replierId),
+    await this.createNotification({
+      recipientId: Number(payload.recipientId),
+      senderId: Number(payload.replierId),
       type: NotificationType.FLOW_REPLY,
-      message: message,
+      message: `${payload.replierNickname} replied to your thread: "${payload.parentContent.substring(0, 30)}..."`,
       targetUrl: payload.replySlug,
-      relatedPostId: Types.ObjectId.createFromHexString(payload.replyId),
+      relatedPostId: Number(payload.replyId),
     });
   }
 
-  // --- CRUD ---
-
-  private async create(data: any) {
-    return this.notificationModel.create(data);
+  private async createNotification(
+    data: Prisma.NotificationUncheckedCreateInput,
+  ): Promise<NotificationEntity> {
+    return this.prisma.notification.create({ data });
   }
 
   async getUserNotifications(
-    userId: string,
-  ): Promise<IPaginationResponse<NotificationDocument>> {
-    const data = await this.notificationModel
-      .find({
-        recipientId: Types.ObjectId.createFromHexString(userId),
-        isRead: false,
-      })
-      .sort({ createdAt: -1 })
-      .populate('senderId', 'username nickname avatar')
-      .exec();
+    userId: number,
+  ): Promise<IPaginationResponse<NotificationEntity>> {
+    const [data, unreadCount] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { recipientId: userId, isRead: false },
+        orderBy: { createdAt: 'desc' },
+        include: SENDER_INCLUDE,
+      }),
+      this.prisma.notification.count({
+        where: { recipientId: userId, isRead: false },
+      }),
+    ]);
 
-    const unreadCount = await this.notificationModel.countDocuments({
-      recipientId: Types.ObjectId.createFromHexString(userId),
-      isRead: false,
-    });
-
-    return { data, meta: { total: unreadCount } };
+    return {
+      data,
+      meta: { total: unreadCount, page: 1, limit: data.length, totalPages: 1 },
+    };
   }
 
   async getUserNotificationsPaginated(
-    userId: string,
+    userId: number,
     queryDto: PaginationQueryDto,
-  ): Promise<IPaginationResponse<NotificationDocument>> {
+  ): Promise<IPaginationResponse<NotificationEntity>> {
+    const { page = 1, limit = 10 } = queryDto;
+    const skip = (page - 1) * limit;
+
     const [data, total] = await Promise.all([
-      this.notificationModel
-        .find({ recipientId: Types.ObjectId.createFromHexString(userId) })
-        .sort({ createdAt: -1 })
-        .skip((queryDto.page - 1) * queryDto.limit)
-        .limit(queryDto.limit)
-        .populate('senderId', 'username nickname avatar')
-        .exec(),
-      this.notificationModel.countDocuments({
-        recipientId: Types.ObjectId.createFromHexString(userId),
+      this.prisma.notification.findMany({
+        where: { recipientId: userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: Number(limit),
+        include: SENDER_INCLUDE,
       }),
+      this.prisma.notification.count({ where: { recipientId: userId } }),
     ]);
 
     return {
       data,
       meta: {
         total,
-        page: queryDto.page,
-        limit: queryDto.limit,
-        totalPages: Math.ceil(total / queryDto.limit),
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
 
   async markAsRead(
-    notificationId: string,
-    userId: string,
-  ): Promise<NotificationDocument> {
-    const notification = await this.notificationModel.findOneAndUpdate(
-      {
-        _id: notificationId,
-        recipientId: Types.ObjectId.createFromHexString(userId),
-      },
-      { $set: { isRead: true } },
-      { new: true },
-    );
-    if (!notification) throw new Error('Notification not found.');
-    return notification;
+    notificationId: number,
+    userId: number,
+  ): Promise<NotificationEntity> {
+    try {
+      return await this.prisma.notification.update({
+        where: { id: notificationId, recipientId: userId },
+        data: { isRead: true },
+        include: SENDER_INCLUDE,
+      });
+    } catch (error) {
+      throw new NotFoundException('Notification not found or unauthorized.');
+    }
   }
 
-  async markAllAsRead(userId: string): Promise<NotificationDocument[]> {
-    await this.notificationModel.updateMany(
-      {
-        recipientId: Types.ObjectId.createFromHexString(userId),
-        isRead: false,
-      },
-      { $set: { isRead: true } },
-    );
-
-    const updatedNotifications = await this.notificationModel.find({
-      recipientId: Types.ObjectId.createFromHexString(userId),
-      isRead: true,
+  async markAllAsRead(userId: number): Promise<NotificationEntity[]> {
+    await this.prisma.notification.updateMany({
+      where: { recipientId: userId, isRead: false },
+      data: { isRead: true },
     });
-    if (!updatedNotifications) throw new Error('Notifications not found.');
-    return updatedNotifications;
+
+    return this.prisma.notification.findMany({
+      where: { recipientId: userId },
+      include: SENDER_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

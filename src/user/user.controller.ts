@@ -43,7 +43,7 @@ export class UserController {
     @Request() req,
     @Body() user: updateUserDto.UpdateMeDto,
   ): Promise<UserResponseDto> {
-    return await this.userService.update(req.user.id, user);
+    return await this.userService.update(Number(req.user.id), user);
   }
 
   @Patch('me/media')
@@ -61,8 +61,8 @@ export class UserController {
   async updateMedia(
     @UploadedFiles() files: { avatar?: Multer.File[]; cover?: Multer.File[] },
     @Request() req,
-  ): Promise<{ avatarUrl?: string; coverUrl?: string }> {
-    const userId = req.user.id;
+  ): Promise<{ avatarUrl: string | null; coverUrl: string | null }> {
+    const userId = Number(req.user.id);
     const updatePayload: { avatar?: string; cover?: string } = {};
 
     if (files.avatar && files.avatar[0]) {
@@ -95,7 +95,9 @@ export class UserController {
   @Patch('new-recovery-codes')
   @ResponseMessage('New recovery codes generated successfully.')
   async newRecoveryCodes(@Request() req): Promise<string[]> {
-    return await this.userService.generateAndSaveRecoveryCodes(req.user.id);
+    return await this.userService.generateAndSaveRecoveryCodes(
+      Number(req.user.id),
+    );
   }
 
   @UseGuards(AuthenticatedGuard)
@@ -106,6 +108,6 @@ export class UserController {
     @Request() req,
     @Body() user: updateUserDto.UpdateUserPasswordDto,
   ): Promise<UserResponseDto> {
-    return await this.userService.updatePassword(req.user.id, user);
+    return await this.userService.updatePassword(Number(req.user.id), user);
   }
 }

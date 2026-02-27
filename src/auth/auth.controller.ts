@@ -14,6 +14,7 @@ import {
   InternalServerErrorException,
   HttpException,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthenticatedGuard } from './guards/authenticated.guard';
@@ -38,10 +39,8 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
-  // Standard GET request for availability check
   @Get('check-username')
   async checkUsername(@Query('username') username: string) {
-    // Basic validation: must be at least 3 chars
     if (!username || username.length < 3) {
       return { available: false, message: 'Username too short' };
     }
@@ -87,57 +86,55 @@ export class AuthController {
     return cleanUserResponse;
   }
 
-  // POST /auth/login
-
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @HttpCode(HttpStatus.OK)
   async login(@Request() req) {
-    return new Promise((resolve, reject) => {
-      req.logIn(req.user, (err: Error) => {
-        if (err) {
-          reject(err);
-        }
-        const rawUser = req.user.toObject
-          ? req.user.toObject({ virtuals: true })
-          : req.user;
+    const user = req.user;
 
-        const cleanUserResponse: UserResponseDto = {
-          id: rawUser.id,
-          username: rawUser.username,
-          firstName: rawUser.firstName,
-          lastName: rawUser.lastName,
-          email: rawUser.email,
-          nickname: rawUser.nickname,
-          bio: rawUser.bio,
-          birthDate: rawUser.birthDate,
-          avatar: rawUser.avatar,
-          cover: rawUser.cover,
-          location: rawUser.location,
-          gender: rawUser.gender,
-
-          isEmailVerified: rawUser.isEmailVerified,
-          isEmailPublic: rawUser.isEmailPublic,
-
-          role: rawUser.role,
-          status: rawUser.status,
-
-          lastLoginAt: rawUser.lastLoginAt,
-          createdAt: rawUser.createdAt,
-          updatedAt: rawUser.updatedAt,
-        };
-        resolve({
-          statusCode: HttpStatus.OK,
-          success: true,
-          message: 'User logged in successfully.',
-          data: cleanUserResponse,
-        });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        req.logIn(user, (err) => (err ? reject(err) : resolve()));
       });
-    });
+    } catch (err) {
+      console.error(err);
+      throw new InternalServerErrorException('Session creation failed.');
+    }
+    try {
+      const cleanUserResponse: UserResponseDto = {
+        id: Number(user.id),
+        username: user.username,
+        nickname: user.nickname ?? null,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        bio: user.bio ?? null,
+        email: user.email,
+        isEmailVerified: !!user.isEmailVerified,
+        isEmailPublic: !!user.isEmailPublic,
+        role: user.role,
+        status: user.status,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        birthDate: user.birthDate ?? null,
+        avatar: user.avatar ?? null,
+        cover: user.cover ?? null,
+        location: user.location ?? null,
+        gender: user.gender ?? null,
+      };
+
+      return {
+        statusCode: HttpStatus.OK,
+        success: true,
+        message: 'User logged in successfully.',
+        data: cleanUserResponse,
+      };
+    } catch (mapError) {
+      console.error(mapError);
+      throw new InternalServerErrorException('Failed to process user data.');
+    }
   }
 
-  // GET /auth/status
   @UseGuards(AuthenticatedGuard)
   @Get('status')
   async status(@Request() req) {
@@ -177,7 +174,6 @@ export class AuthController {
       };
     }
 
-    // User is not logged in.
     await new Promise<void>((resolve, reject) => {
       req.session.destroy((err) => {
         if (err) {
@@ -194,10 +190,8 @@ export class AuthController {
     };
   }
 
-  // POST /auth/logout
   @Post('logout')
   async logout(@Request() req, @Res() res) {
-    // PassportLogout.
     await new Promise<void>((resolve, reject) => {
       req.logOut((err) => {
         if (err) {
@@ -228,7 +222,6 @@ export class AuthController {
     };
   }
 
-  // token-request
   @Post('forgot-password')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @HttpCode(HttpStatus.OK)
@@ -239,7 +232,6 @@ export class AuthController {
     await this.authService.sendPasswordResetToken(loginField);
   }
 
-  //reset-password
   @Post('reset-password')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @HttpCode(HttpStatus.OK)

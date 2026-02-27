@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- ENUMS ---
+
+enum UserRole {
+  ADMIN
+  USER
+  MODERATOR
+  WRITER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum UserGender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum EntityType {
+  POST
+  FLOW
+}
+
+// --- MODELS ---
+
+model User {
+  id                     Int          @id @default(autoincrement())
+  username               String       @unique @db.VarChar(50)
+  nickname               String       @db.VarChar(50)
+  email                  String       @unique @db.VarChar(100)
+  passwordHash           String
+  avatar                 String?
+  cover                  String?
+  firstName              String?      @db.VarChar(50)
+  lastName               String?      @db.VarChar(50)
+  bio                    String?      @db.VarChar(500)
+  gender                 UserGender?
+  location               String?
+  birthDate              DateTime
+  isEmailVerified        Boolean      @default(false)
+  isEmailPublic          Boolean      @default(false)
+  role                   UserRole     @default(USER)
+  status                 UserStatus   @default(ACTIVE)
+  lastLoginAt            DateTime     @default(now())
+  resetPasswordToken     String?
+  resetPasswordExpiresAt DateTime?
+  recoveryCodes          String[]     @default([])
+  
+  // Timestamps
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  // Relations
+  flows                  Flow[]
+  posts                  Post[]
+  tags                   Tag[]
+  topics                 Topic[]
+  votes                  Vote[]
+
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+  sentNotifications     Notification[] @relation("SentNotifications")
+}
+
+model Flow {
+  id         Int      @id @default(autoincrement())
+  slug       String   @unique
+  content    String   @db.VarChar(500)
+  replyCount Int      @default(0)
+  isDeleted  Boolean  @default(false)
+  
+  // Relations
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   Int
+  
+  parent     Flow?    @relation("FlowToReplies", fields: [parentId], references: [id])
+  parentId   Int?
+  replies    Flow[]   @relation("FlowToReplies")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([slug])
+}
+
+model Tag {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  slug        String   @unique
+  status      Boolean  @default(false)
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  topics      Topic[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([slug])
+}
+
+model Topic {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique
+  content     String   @db.Text
+  slug        String   @unique
+  postCount   Int      @default(0)
+  lastPostAt  DateTime @default(now())
+  viewCount   Int      @default(0)
+  status      Boolean  @default(true)
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  tag         Tag      @relation(fields: [tagId], references: [id])
+  tagId       Int
+  posts       Post[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tagId])
+  @@index([slug])
+}
+
+model Post {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  slug        String    @unique
+  mainImage   String?
+  content     String    @db.Text
+  postCount   Int       @default(0)
+  lastPostAt  DateTime? @default(now())
+  viewCount   Int       @default(0)
+  status      Boolean   @default(true)
+  readingTime Int       @default(0)
+  score       Int       @default(0)
+  upvotes     Int       @default(0)
+  downvotes   Int       @default(0)
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  topic       Topic     @relation(fields: [topicId], references: [id])
+  topicId     Int
+  
+  parent      Post?     @relation("PostToReplies", fields: [parentId], references: [id])
+  parentId    Int?
+  replies     Post[]    @relation("PostToReplies")
+  
+  votes       Vote[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([topicId])
+  @@index([slug])
+}
+
+model Vote {
+  id        Int        @id @default(autoincrement())
+  direction Int        // 1 or -1
+  type      EntityType
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id])
+  userId    Int
+  post      Post       @relation(fields: [postId], references: [id])
+  postId    Int
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, postId, type])
+}
+
+model SearchLog {
+  id        Int      @id @default(autoincrement())
+  query     String   @unique
+  userId    Int?
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(100)
+  subject   String   @db.VarChar(150)
+  message   String   @db.VarChar(1000)
+  slug      String?  @unique
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}
+
+enum NotificationType {
+  VOTE_UP
+  VOTE_DOWN
+  POST_REPLY
+  FLOW_REPLY
+}
+
+model Notification {
+  id            Int              @id @default(autoincrement())
+  recipientId   Int
+  senderId      Int
+  type          NotificationType
+  message       String
+  targetUrl     String
+  relatedPostId Int?
+  isRead        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  recipient     User             @relation("ReceivedNotifications", fields: [recipientId], references: [id])
+  sender        User             @relation("SentNotifications", fields: [senderId], references: [id])
+
+  @@index([recipientId])
+  @@index([isRead])
+}

@@ -24,16 +24,17 @@ export class SearchController {
   @ResponseMessage('Search results')
   @HttpCode(HttpStatus.OK)
   @Get()
-  search(
+  async search(
     @Query() query: PaginationQueryDto,
     @Req() req: IRequestWithUser,
   ): Promise<IPaginationResponse<SearchResultDto>> {
     if (!query.q || query.q.length < 2) {
       throw new BadRequestException('Query must be at least 2 characters long');
     }
+
     return this.searchService.search({
       paginationQueryDto: query,
-      userId: req.user?.id,
+      userId: req.user?.id ? Number(req.user.id) : undefined,
     });
   }
 

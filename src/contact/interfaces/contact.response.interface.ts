@@ -1,5 +1,5 @@
 export interface IContactResponse {
-  id: string;
+  id: number;
   name: string;
   email: string;
   subject: string;

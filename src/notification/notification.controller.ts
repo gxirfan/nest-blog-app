@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Param, Req, UseGuards, Query, DefaultValuePipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Req,
+  UseGuards,
+  Query,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
@@ -12,27 +21,48 @@ import { IPaginationResponse } from 'src/common/interfaces/pagination-response.i
 @UseInterceptors(TransformInterceptor)
 @UseGuards(AuthenticatedGuard)
 export class NotificationController {
-    constructor(private readonly notificationService: NotificationService) { }
+  constructor(private readonly notificationService: NotificationService) {}
 
-    @Get()
-    async getUserNotifications(@Req() req): Promise<IPaginationResponse<NotificationResponseDto>> {
-        const rawPaginationData = await this.notificationService.getUserNotifications(req.user.id);
-        return NotificationMapper.toPaginatedResponseDto(rawPaginationData);
-    }
+  @Get()
+  async getUserNotifications(
+    @Req() req,
+  ): Promise<IPaginationResponse<NotificationResponseDto>> {
+    const rawData = await this.notificationService.getUserNotifications(
+      Number(req.user.id),
+    );
+    return NotificationMapper.toPaginatedResponseDto(rawData);
+  }
 
-    @Get('all')
-    async getUserNotificationsPaginated(@Req() req, @Query() query: PaginationQueryDto): Promise<IPaginationResponse<NotificationResponseDto>> {
-        const rawPaginationData = await this.notificationService.getUserNotificationsPaginated(req.user.id, query);
-        return NotificationMapper.toPaginatedResponseDto(rawPaginationData);
-    }
+  @Get('all')
+  async getUserNotificationsPaginated(
+    @Req() req,
+    @Query() query: PaginationQueryDto,
+  ): Promise<IPaginationResponse<NotificationResponseDto>> {
+    const rawData =
+      await this.notificationService.getUserNotificationsPaginated(
+        Number(req.user.id),
+        query,
+      );
+    return NotificationMapper.toPaginatedResponseDto(rawData);
+  }
 
-    @Patch(':id/read')
-    async markAsRead(@Req() req, @Param('id') id: string): Promise<NotificationResponseDto> {
-        return NotificationMapper.toResponseDto(await this.notificationService.markAsRead(id, req.user.id));
-    }
+  @Patch(':id/read')
+  async markAsRead(
+    @Req() req,
+    @Param('id') id: string,
+  ): Promise<NotificationResponseDto> {
+    const result = await this.notificationService.markAsRead(
+      Number(id),
+      Number(req.user.id),
+    );
+    return NotificationMapper.toResponseDto(result);
+  }
 
-    @Patch('read-all')
-    async markAllAsRead(@Req() req): Promise<NotificationResponseDto[]> {
-        return NotificationMapper.toArrayResponseDto(await this.notificationService.markAllAsRead(req.user.id));
-    }
+  @Patch('read-all')
+  async markAllAsRead(@Req() req): Promise<NotificationResponseDto[]> {
+    const result = await this.notificationService.markAllAsRead(
+      Number(req.user.id),
+    );
+    return NotificationMapper.toArrayResponseDto(result);
+  }
 }

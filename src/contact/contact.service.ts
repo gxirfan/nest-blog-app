@@ -1,70 +1,63 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { ContactMessageEntity } from './entities/contact-message.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
-import { InjectModel } from '@nestjs/mongoose';
-import {
-  ContactMessage,
-  ContactMessageDocument,
-} from './schemas/contact-message.schema';
-import { Model } from 'mongoose';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import slugify from 'slugify';
 
 @Injectable()
 export class ContactService {
-  constructor(
-    @InjectModel(ContactMessage.name)
-    private contactMessageModel: Model<ContactMessageDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private async createUniqueSlug(title: string): Promise<string> {
     let baseSlug = slugify(title, { lower: true, strict: true });
     if (!baseSlug || baseSlug.trim() === '') baseSlug = 'censored-title';
     let slug = baseSlug;
-    let existingPost = await this.contactMessageModel.exists({ slug }).exec();
 
-    while (existingPost) {
+    while (true) {
+      const existing = await this.prisma.contactMessage.findUnique({
+        where: { slug },
+      });
+      if (!existing) break;
       const randomSuffix = Math.floor(Math.random() * 9000) + 1000;
       slug = `${baseSlug}-${randomSuffix}`;
-      existingPost = await this.contactMessageModel.exists({ slug }).exec();
     }
     return slug;
   }
 
   async handleContactSubmission(
     data: CreateContactDto,
-  ): Promise<ContactMessageDocument> {
+  ): Promise<ContactMessageEntity> {
     const slug = await this.createUniqueSlug(data.subject);
-    const contactMessage = new this.contactMessageModel({
-      ...data,
-      slug,
+    return this.prisma.contactMessage.create({
+      data: {
+        ...data,
+        slug,
+      },
     });
-    return contactMessage.save();
   }
 
-  async findAll(): Promise<ContactMessageDocument[]> {
-    return this.contactMessageModel.find().exec();
+  async findAll(): Promise<ContactMessageEntity[]> {
+    return this.prisma.contactMessage.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async findAllPaginated(
     paginationQueryDto: PaginationQueryDto,
-  ): Promise<IPaginationResponse<ContactMessageDocument>> {
-    const { page, limit } = paginationQueryDto;
+  ): Promise<IPaginationResponse<ContactMessageEntity>> {
+    const { page = 1, limit = 10 } = paginationQueryDto;
     const skip = (page - 1) * limit;
 
-    // Execute count and data fetch in parallel for better performance
     const [data, total] = await Promise.all([
-      this.contactMessageModel
-        .find()
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.contactMessageModel.countDocuments().exec(),
+      this.prisma.contactMessage.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: Number(limit),
+      }),
+      this.prisma.contactMessage.count(),
     ]);
-
-    // Calculate total pages for the metadata object
-    const totalPages = Math.ceil(total / limit);
 
     return {
       data,
@@ -72,51 +65,51 @@ export class ContactService {
         total,
         page,
         limit,
-        totalPages,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
 
-  async findOneById(id: string): Promise<ContactMessageDocument> {
-    const contactMessage = await this.contactMessageModel.findById(id).exec();
-    if (!contactMessage) {
-      throw new NotFoundException('Contact message not found');
-    }
-    return contactMessage;
+  async findOneById(id: number): Promise<ContactMessageEntity> {
+    const message = await this.prisma.contactMessage.findUnique({
+      where: { id },
+    });
+    if (!message) throw new NotFoundException('Contact message not found');
+    return message;
   }
 
-  async findOneBySlug(slug: string): Promise<ContactMessageDocument> {
-    const contactMessage = await this.contactMessageModel
-      .findOne({ slug })
-      .exec();
-    if (!contactMessage) {
+  async findOneBySlug(slug: string): Promise<ContactMessageEntity> {
+    try {
+      return await this.prisma.contactMessage.update({
+        where: { slug },
+        data: { isRead: true },
+      });
+    } catch (e) {
       throw new NotFoundException('Contact message not found');
     }
-    contactMessage.isRead = true;
-    await contactMessage.save();
-    return contactMessage;
   }
 
   async update(
-    id: string,
-    contactMessage: CreateContactDto,
-  ): Promise<ContactMessageDocument> {
-    const updatedContactMessage = await this.contactMessageModel
-      .findByIdAndUpdate(id, contactMessage, { new: true })
-      .exec();
-    if (!updatedContactMessage) {
+    id: number,
+    data: CreateContactDto,
+  ): Promise<ContactMessageEntity> {
+    try {
+      return await this.prisma.contactMessage.update({
+        where: { id },
+        data,
+      });
+    } catch (e) {
       throw new NotFoundException('Contact message not found');
     }
-    return updatedContactMessage;
   }
 
-  async delete(id: string): Promise<ContactMessageDocument> {
-    const deletedContactMessage = await this.contactMessageModel
-      .findByIdAndDelete(id)
-      .exec();
-    if (!deletedContactMessage) {
+  async delete(id: number): Promise<ContactMessageEntity> {
+    try {
+      return await this.prisma.contactMessage.delete({
+        where: { id },
+      });
+    } catch (e) {
       throw new NotFoundException('Contact message not found');
     }
-    return deletedContactMessage;
   }
 }

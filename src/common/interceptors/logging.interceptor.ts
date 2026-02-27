@@ -18,7 +18,6 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const { method, originalUrl } = req;
 
-    // IP adresini daha kapsamlı alalım (Proxy uyumlu)
     const ip =
       req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
     const userAgent = req.get('user-agent') || 'Unknown Agent';
@@ -31,7 +30,6 @@ export class LoggingInterceptor implements NestInterceptor {
           this.logRequest(req, res, startTime, ip, userAgent);
         },
         error: (err) => {
-          // Hata durumlarını da loglayalım ki sistemde ne patlamış görebilelim
           this.logRequest(req, res, startTime, ip, userAgent, err);
         },
       }),
@@ -49,7 +47,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const duration = Date.now() - startTime;
     const statusCode = error ? error.status || 500 : res.statusCode;
 
-    // Auth Guard'dan gelen kullanıcı verisini çekiyoruz
     const user = req.user;
     const identity = user
       ? `[User: ${user.username} | ID: ${user.id || user._id}]`

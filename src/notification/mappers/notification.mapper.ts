@@ -1,40 +1,49 @@
-import { NotificationDocument } from '../schemas/notification.schema';
+import { Notification } from '@prisma/client';
 import { NotificationResponseDto } from '../dto/notification.response.dto';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
+import { UserEntity } from 'src/user/entities/user.entity';
+
+export type PrismaNotification = Notification & {
+  sender?: Partial<UserEntity>;
+};
 
 export class NotificationMapper {
-    
-    public static toResponseDto(document: NotificationDocument): NotificationResponseDto {
-        const doc = document.toObject ? document.toObject({ virtuals: true }) : document;
-        const sender = doc.senderId ? doc.senderId : null;
+  public static toResponseDto(
+    raw: PrismaNotification,
+  ): NotificationResponseDto {
+    if (!raw) return null as any;
+    const sender = raw.sender;
 
-        return {
-            id: doc._id.toString(),
-            senderId: sender?.id ? sender.id.toString() : '',
-            senderUsername: sender?.username,
-            senderNickname: sender?.nickname,
-            senderAvatar: sender?.avatar,
-            recipientId: doc.recipientId ? doc.recipientId.toString() : '',
-            type: doc.type,
-            message: doc.message,
-            targetUrl: doc.targetUrl,
-            relatedPostId: doc.relatedPostId ? doc.relatedPostId.toString() : '', 
-            isRead: doc.isRead,
-            createdAt: doc.createdAt.toISOString(),
-            updatedAt: doc.updatedAt.toISOString(),
-        };
-    }
+    return {
+      id: raw.id,
+      senderId: raw.senderId,
+      senderUsername: sender?.username ?? '',
+      senderNickname: sender?.nickname ?? '',
+      senderAvatar: sender?.avatar ?? '',
+      recipientId: raw.recipientId,
+      type: raw.type,
+      message: raw.message,
+      targetUrl: raw.targetUrl,
+      relatedPostId: raw.relatedPostId ?? 0,
+      isRead: raw.isRead,
+      createdAt: raw.createdAt instanceof Date ? raw.createdAt : new Date(),
+      updatedAt: raw.updatedAt instanceof Date ? raw.updatedAt : new Date(),
+    };
+  }
 
-    public static toArrayResponseDto(document: NotificationDocument[]): NotificationResponseDto[] {
-        return document.map(doc => this.toResponseDto(doc));
-    }
+  public static toArrayResponseDto(
+    items: PrismaNotification[],
+  ): NotificationResponseDto[] {
+    if (!items) return [];
+    return items.map((item) => this.toResponseDto(item));
+  }
 
-    public static toPaginatedResponseDto(
-        source: IPaginationResponse<NotificationDocument>
-    ): IPaginationResponse<NotificationResponseDto> {
-        return {
-            data: source.data.map(doc => this.toResponseDto(doc)),
-            meta: source.meta,
-        };
-    }
+  public static toPaginatedResponseDto(
+    source: IPaginationResponse<PrismaNotification>,
+  ): IPaginationResponse<NotificationResponseDto> {
+    return {
+      data: this.toArrayResponseDto(source.data),
+      meta: source.meta,
+    };
+  }
 }
