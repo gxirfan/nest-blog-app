@@ -147,10 +147,16 @@ export class UpdateMeDto extends BaseUpdateUserDto {}
 //admin
 export class UpdateUserByAdminDto extends BaseUpdateUserDto {
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   @IsEnum(UserRole)
   role?: string;
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   @IsEnum(UserStatus)
   status?: string;
 }
