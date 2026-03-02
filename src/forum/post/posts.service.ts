@@ -133,6 +133,9 @@ export class PostsService {
       ? Number(createPostDto.parentId)
       : null;
     const topicId = Number(createPostDto.topicId);
+    const cleanedTags = createPostDto.seoTags
+      ? createPostDto.seoTags.map((tag) => tag.trim().toLowerCase())
+      : [];
 
     const post = await this.prisma.post.create({
       data: {
@@ -146,6 +149,7 @@ export class PostsService {
         mainImage: mainImage
           ? this.saveBase64Image(mainImage, 'postCovers') || undefined
           : undefined,
+        seoTags: cleanedTags,
       },
     });
 
@@ -606,6 +610,10 @@ export class PostsService {
         post.mainImage
       : post.mainImage;
 
+    const cleanedTags = updatePostDto.seoTags
+      ? updatePostDto.seoTags.map((tag) => tag.trim().toLowerCase())
+      : [];
+
     const updatedPost = await this.prisma.post.update({
       where: { id },
       data: {
@@ -614,6 +622,7 @@ export class PostsService {
         content,
         readingTime,
         mainImage,
+        seoTags: cleanedTags,
       },
     });
 

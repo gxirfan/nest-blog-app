@@ -32,7 +32,7 @@ export class PostsController {
 
   @UseGuards(AuthenticatedGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
-  @UseInterceptors(CensorInterceptor)
+  // @UseInterceptors(CensorInterceptor)
   @Post()
   @ResponseMessage('Post created successfully.')
   async createPost(

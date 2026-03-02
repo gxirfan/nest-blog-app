@@ -28,6 +28,7 @@ export class PostMapper {
       id: post.id,
       title: post.title,
       slug: post.slug,
+      seoTags: post.seoTags,
       mainImage: post.mainImage ?? null,
       content: post.content,
       score: post.score ?? 0,

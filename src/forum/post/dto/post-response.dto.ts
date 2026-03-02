@@ -4,6 +4,7 @@ export class PostResponseDto implements IAuditFields {
   id: number;
   title: string;
   slug: string;
+  seoTags: string[];
   mainImage: string | null;
   content: string;
   score: number;

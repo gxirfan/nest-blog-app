@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -50,4 +51,9 @@ export class CreatePostDto {
     return value.trim().replace(/\s+/g, '-').toLowerCase();
   })
   slug?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  seoTags?: string[];
 }

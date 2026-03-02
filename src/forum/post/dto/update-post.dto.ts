@@ -4,6 +4,7 @@ import {
   IsString,
   MinLength,
   MaxLength,
+  IsArray,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -45,4 +46,9 @@ export class UpdatePostDto {
     return value.trim().replace(/\s+/g, '-').toLowerCase();
   })
   slug?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  seoTags?: string[];
 }

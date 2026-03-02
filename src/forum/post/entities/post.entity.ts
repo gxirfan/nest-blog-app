@@ -5,6 +5,7 @@ export class PostEntity implements Post, IAuditFields {
   id: number;
   title: string;
   slug: string;
+  seoTags: string[];
   mainImage: string | null;
   content: string;
   postCount: number;
