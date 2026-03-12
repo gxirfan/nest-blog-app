@@ -23,6 +23,7 @@ import { AdminModule } from './admin/admin.module';
 import { SearchModule } from './search/search.module';
 import { redisStore } from 'cache-manager-redis-yet';
 import { PrismaModule } from './prisma/prisma.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VoteModule,
     FlowModule,
     SearchModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [
