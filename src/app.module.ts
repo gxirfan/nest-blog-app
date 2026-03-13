@@ -5,7 +5,7 @@ import { UserModule } from './user/user.module';
 import { ForumModule } from './forum/forum.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ConfigService } from '@nestjs/config';
 import { ResponseWrapperInterceptor } from './common/interceptors/response-wrapper.interceptor';
@@ -24,6 +24,7 @@ import { SearchModule } from './search/search.module';
 import { redisStore } from 'cache-manager-redis-yet';
 import { PrismaModule } from './prisma/prisma.module';
 import { AiModule } from './ai/ai.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -48,6 +49,12 @@ import { AiModule } from './ai/ai.module';
     EventEmitterModule.forRoot({
       global: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
     PrismaModule,
     AdminModule,
     UserModule,
@@ -78,6 +85,10 @@ import { AiModule } from './ai/ai.module';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
