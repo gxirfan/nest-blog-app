@@ -50,7 +50,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.19.0",
-    "prisma": "^7.4.1",
+    "prisma": "^7.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "slugify": "^1.6.6",
@@ -59,8 +59,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
-    "@nestjs/cli": "^11.0.0",
-    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/cli": "^11.0.16",
+    "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/cache-manager": "^4.0.6",
@@ -104,5 +104,15 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "pnpm": {
+    "overrides": {
+      "mjml": "4.15.3",
+      "html-minifier": "4.0.0",
+      "hono": ">=4.12.7",
+      "glob": ">=10.5.0",
+      "lodash": ">=4.17.23",
+      "ajv": ">=8.18.0"
+    }
   }
 }
