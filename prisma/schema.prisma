@@ -242,3 +242,23 @@ model Notification {
   @@index([recipientId])
   @@index([isRead])
 }
+
+model Session {
+  sid    String   @id @db.VarChar
+  sess      Json     
+  expire    DateTime
+  
+  @@map("session") 
+  
+  @@index([expire])
+}
+
+model AiChatMessage {
+  id         String   @id @default(uuid())
+  identifier String   // 'username' or 'ip_address'
+  role       String   // 'user' or 'assistant'
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([identifier]) // Admin panel queries for speed
+}

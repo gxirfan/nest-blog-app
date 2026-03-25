@@ -10,6 +10,7 @@ import { UpdatePostDto } from 'src/forum/post/dto/update-post.dto';
 import { FlowService } from 'src/flow/flow.service';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { ContactService } from 'src/contact/contact.service';
+import { AiService } from 'src/ai/ai.service';
 
 @Injectable()
 export class AdminService {
@@ -20,6 +21,7 @@ export class AdminService {
     private readonly postsService: PostsService,
     private readonly flowService: FlowService,
     private readonly contactService: ContactService,
+    private readonly aiService: AiService,
   ) {}
 
   // --- USER OPERATIONS ---
@@ -126,5 +128,14 @@ export class AdminService {
 
   async findOneContactBySlug(slug: string) {
     return await this.contactService.findOneBySlug(slug);
+  }
+
+  // --- AI OPERATIONS ---
+  async getAllChatSessions(paginationQueryDto: PaginationQueryDto) {
+    return await this.aiService.getAllChatSessions(paginationQueryDto);
+  }
+
+  async getChatHistory(identifier: string) {
+    return await this.aiService.getChatHistory(identifier);
   }
 }

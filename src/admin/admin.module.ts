@@ -7,6 +7,7 @@ import { TopicsModule } from 'src/forum/topic/topics.module';
 import { PostsModule } from 'src/forum/post/posts.module';
 import { FlowModule } from 'src/flow/flow.module';
 import { ContactModule } from 'src/contact/contact.module';
+import { AiModule } from 'src/ai/ai.module';
 
 @Module({
   providers: [AdminService],
@@ -18,6 +19,7 @@ import { ContactModule } from 'src/contact/contact.module';
     PostsModule,
     FlowModule,
     ContactModule,
+    AiModule,
   ],
 })
 export class AdminModule {}

@@ -212,4 +212,18 @@ export class AdminController {
       await this.adminService.findOnePostBySlug(Number(req.user.id), slug),
     );
   }
+
+  //ai-chats
+  @Get('ai-sessions')
+  @ResponseMessage('Chat sessions fetched successfully.')
+  async getChatSessions(@Query() paginationQueryDto: PaginationQueryDto) {
+    const data = await this.adminService.getAllChatSessions(paginationQueryDto);
+    console.log(data);
+    return data;
+  }
+
+  @Get('ai-history/:identifier')
+  async getChatHistory(@Param('identifier') identifier: string) {
+    return await this.adminService.getChatHistory(identifier);
+  }
 }
