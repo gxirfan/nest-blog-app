@@ -4,7 +4,6 @@ import {
   MinLength,
   IsDate,
   IsBoolean,
-  IsNotEmpty,
   IsInt,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
@@ -55,7 +54,7 @@ export class UpdateTopicDto {
   })
   slug?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
-  userId: number;
+  userId?: number;
 }
