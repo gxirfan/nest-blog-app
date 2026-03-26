@@ -108,7 +108,6 @@ export class TopicsController {
 
   @UseGuards(AuthenticatedGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
-  @UseInterceptors(CensorInterceptor)
   @Patch(':id')
   @ResponseMessage('Topic updated successfully.')
   async updateOneById(
