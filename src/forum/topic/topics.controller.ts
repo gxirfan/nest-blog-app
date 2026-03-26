@@ -32,7 +32,6 @@ export class TopicsController {
 
   @UseGuards(AuthenticatedGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
-  @UseInterceptors(CensorInterceptor)
   @Post()
   async createTopic(
     @Req() req,
