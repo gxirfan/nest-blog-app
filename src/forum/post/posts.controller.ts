@@ -157,7 +157,6 @@ export class PostsController {
 
   @UseGuards(AuthenticatedGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR, UserRole.WRITER)
-  @UseInterceptors(CensorInterceptor)
   @Patch(':id')
   @ResponseMessage('Post updated successfully.')
   async update(
