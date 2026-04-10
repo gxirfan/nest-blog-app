@@ -19,10 +19,15 @@ import {
 import { CreateUserRequestDto } from './dto/create-user.dto';
 import * as crypto from 'crypto';
 import { UserEntity } from './entities/user.entity';
+import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
@@ -99,15 +104,27 @@ export class UserService {
   async findOneById(id: number): Promise<UserEntity> {
     const user = await this.prisma.user.findUnique({
       where: { id: Number(id) },
+      include: {
+        _count: {
+          select: { followers: true, following: true },
+        },
+      },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return this.mapUserToEntity(user);
   }
 
   async findOneByUsername(username: string): Promise<UserEntity> {
-    const user = await this.prisma.user.findUnique({ where: { username } });
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      include: {
+        _count: {
+          select: { followers: true, following: true },
+        },
+      },
+    });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return this.mapUserToEntity(user);
   }
 
   async findOneByLoginField(loginField: string): Promise<UserEntity> {
@@ -115,9 +132,15 @@ export class UserService {
       where: {
         OR: [{ email: loginField.toLowerCase() }, { username: loginField }],
       },
+      include: {
+        _count: {
+          select: { followers: true, following: true },
+        },
+      },
     });
+    console.log(user);
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return this.mapUserToEntity(user);
   }
 
   async findOneByResetToken(token: string): Promise<UserEntity> {
@@ -128,7 +151,7 @@ export class UserService {
       },
     });
     if (!user) throw new NotFoundException('User token invalid or expired');
-    return user;
+    return this.mapUserToEntity(user);
   }
 
   async generateAndSaveRecoveryCodes(userId: number): Promise<string[]> {
@@ -156,17 +179,47 @@ export class UserService {
       where: { username },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return this.mapUserToEntity(user);
   }
 
   async findOneByUsernameForPublicProfile(
     username: string,
-  ): Promise<UserEntity> {
+    currentUserId?: number,
+  ): Promise<UserEntity & { isFollowing: boolean }> {
     const user = await this.prisma.user.findUnique({
       where: { username },
+      include: {
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+          },
+        },
+      },
     });
-    if (!user) throw new NotFoundException('User not found');
-    return user;
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let isFollowing = false;
+
+    if (currentUserId && currentUserId !== user.id) {
+      const followRecord = await this.prisma.follows.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: currentUserId,
+            followingId: user.id,
+          },
+        },
+      });
+      isFollowing = !!followRecord;
+    }
+
+    return {
+      ...this.mapUserToEntity(user),
+      isFollowing,
+    };
   }
 
   async update(id: number, data: UpdateMeDto): Promise<UserEntity> {
@@ -294,5 +347,163 @@ export class UserService {
     }
 
     return this.prisma.user.delete({ where: { id } });
+  }
+
+  //follows
+  async toggleFollow(
+    followerId: number,
+    followingId: number,
+  ): Promise<boolean> {
+    if (followerId === followingId) {
+      throw new BadRequestException('You cannot follow yourself.');
+    }
+
+    const existingFollow = await this.prisma.follows.findUnique({
+      where: {
+        followerId_followingId: { followerId, followingId },
+      },
+    });
+
+    if (existingFollow) {
+      await this.prisma.follows.delete({
+        where: {
+          followerId_followingId: { followerId, followingId },
+        },
+      });
+      return false;
+    }
+
+    await this.prisma.follows.create({
+      data: { followerId, followingId },
+    });
+
+    this.eventEmitter.emit('user.followed', {
+      followerId,
+      followerUsername: (await this.findOneById(followerId)).username,
+      followerNickname: (await this.findOneById(followerId)).nickname,
+      followingId,
+    });
+
+    return true;
+  }
+
+  async findFollowers(
+    username: string,
+    currentUserId?: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<IPaginationResponse<UserEntity & { isFollowing: boolean }>> {
+    const skip = (page - 1) * limit;
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { username },
+    });
+    if (!targetUser) throw new NotFoundException('User not found');
+
+    const [follows, total] = await Promise.all([
+      this.prisma.follows.findMany({
+        where: { followingId: targetUser.id },
+        include: {
+          follower: {
+            include: {
+              _count: { select: { followers: true, following: true } },
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.follows.count({ where: { followingId: targetUser.id } }),
+    ]);
+
+    const data = await Promise.all(
+      follows.map(async (f) => {
+        const user = f.follower;
+        let isFollowing = false;
+        if (currentUserId) {
+          const check = await this.prisma.follows.findUnique({
+            where: {
+              followerId_followingId: {
+                followerId: currentUserId,
+                followingId: user.id,
+              },
+            },
+          });
+          isFollowing = !!check;
+        }
+        return { ...this.mapUserToEntity(user), isFollowing };
+      }),
+    );
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async findFollowing(
+    username: string,
+    currentUserId?: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<IPaginationResponse<UserEntity & { isFollowing: boolean }>> {
+    const skip = (page - 1) * limit;
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { username },
+    });
+    if (!targetUser) throw new NotFoundException('User not found');
+
+    const [follows, total] = await Promise.all([
+      this.prisma.follows.findMany({
+        where: { followerId: targetUser.id },
+        include: {
+          following: {
+            include: {
+              _count: { select: { followers: true, following: true } },
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.follows.count({ where: { followerId: targetUser.id } }),
+    ]);
+
+    const data = await Promise.all(
+      follows.map(async (f) => {
+        const user = f.following;
+        let isFollowing = false;
+        if (currentUserId) {
+          const check = await this.prisma.follows.findUnique({
+            where: {
+              followerId_followingId: {
+                followerId: currentUserId,
+                followingId: user.id,
+              },
+            },
+          });
+          isFollowing = !!check;
+        }
+        return { ...this.mapUserToEntity(user), isFollowing };
+      }),
+    );
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  private mapUserToEntity(user: any): UserEntity {
+    const { _count, ...userData } = user;
+
+    return {
+      ...userData,
+      followers: _count?.followers ?? 0,
+      following: _count?.following ?? 0,
+    } as UserEntity;
   }
 }

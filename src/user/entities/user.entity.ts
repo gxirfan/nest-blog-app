@@ -25,4 +25,6 @@ export class UserEntity implements User, IAuditFields {
   updatedAt: Date;
   resetPasswordToken: string | null;
   resetPasswordExpiresAt: Date | null;
+  followers?: number | null = 0;
+  following?: number | null = 0;
 }

@@ -6,6 +6,7 @@ import {
   VoteCreatedEvent,
   ReplyCreatedEvent,
   FlowRepliedEvent,
+  UserFollowedEvent,
 } from './events/notification.events';
 import { IPaginationResponse } from 'src/common/interfaces/pagination-response.interface';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
@@ -75,6 +76,17 @@ export class NotificationService {
       message: `${payload.replierNickname} replied to your thread: "${payload.parentContent.substring(0, 30)}..."`,
       targetUrl: payload.replySlug,
       relatedPostId: Number(payload.replyId),
+    });
+  }
+
+  @OnEvent('user.followed')
+  async handleUserFollowed(payload: UserFollowedEvent) {
+    await this.createNotification({
+      recipientId: Number(payload.followingId),
+      senderId: Number(payload.followerId),
+      type: NotificationType.FOLLOW,
+      message: `${payload.followerNickname} started following you`,
+      targetUrl: `/user/${payload.followerUsername}`,
     });
   }
 

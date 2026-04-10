@@ -121,6 +121,8 @@ export class AuthController {
         cover: user.cover ?? null,
         location: user.location ?? null,
         gender: user.gender ?? null,
+        followers: user.followers ?? 0,
+        following: user.following ?? 0,
       };
 
       return {
@@ -161,6 +163,8 @@ export class AuthController {
 
         role: rawUser.role,
         status: rawUser.status,
+        followers: rawUser.followers ?? 0,
+        following: rawUser.following ?? 0,
 
         lastLoginAt: rawUser.lastLoginAt,
         createdAt: rawUser.createdAt,

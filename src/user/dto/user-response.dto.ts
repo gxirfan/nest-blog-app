@@ -21,6 +21,8 @@ export class UserResponseDto implements IUserBaseProfile, IAuditFields {
   cover: string | null;
   location: string | null;
   gender: string | null;
+  followers?: number | null;
+  following?: number | null;
 }
 
 export class UserResponseWithRecoveryCodesDto
@@ -46,4 +48,6 @@ export class UserResponseWithRecoveryCodesDto
   cover: string | null;
   location: string | null;
   gender: string | null;
+  followers?: number | null;
+  following?: number | null;
 }

@@ -73,6 +73,21 @@ model User {
 
   receivedNotifications Notification[] @relation("ReceivedNotifications")
   sentNotifications     Notification[] @relation("SentNotifications")
+
+  followers         Follows[]     @relation("following")
+  following         Follows[]     @relation("follower")
+}
+
+model Follows {
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("follower", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId])
+  @@map("user_follows")
 }
 
 model Flow {
@@ -222,6 +237,7 @@ enum NotificationType {
   VOTE_DOWN
   POST_REPLY
   FLOW_REPLY
+  FOLLOW
 }
 
 model Notification {

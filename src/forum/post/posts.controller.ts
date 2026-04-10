@@ -129,6 +129,20 @@ export class PostsController {
     return { data: PostMapper.toResponseDtoList(data), meta };
   }
 
+  @Get('all/following')
+  @ResponseMessage('All posts fetched successfully.')
+  async findAllByFollowingUsersPosts(
+    @Req() req,
+    @Query() query: PaginationQueryDto,
+  ): Promise<IPaginationResponse<PostResponseDto>> {
+    const { data, meta } = await this.postsService.findAllByFollowingUsersPosts(
+      Number(req.user.id),
+      query.page,
+      query.limit,
+    );
+    return { data: PostMapper.toResponseDtoList(data), meta };
+  }
+
   @Get()
   @ResponseMessage('All posts fetched successfully.')
   async findAll(): Promise<PostResponseDto[]> {

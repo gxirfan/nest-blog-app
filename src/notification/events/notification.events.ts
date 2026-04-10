@@ -35,3 +35,12 @@ export class FlowRepliedEvent {
     public readonly replyId: number,
   ) {}
 }
+
+export class UserFollowedEvent {
+  constructor(
+    public readonly followerId: number,
+    public readonly followerUsername: string,
+    public readonly followerNickname: string,
+    public readonly followingId: number,
+  ) {}
+}

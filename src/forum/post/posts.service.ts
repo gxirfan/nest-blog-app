@@ -508,6 +508,71 @@ export class PostsService {
     };
   }
 
+  async findAllByFollowingUsersPosts(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<IPaginationResponse<PostEntity>> {
+    const skip = (page - 1) * limit;
+
+    const followedUsers = await this.prisma.follows.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+
+    const followingIds = followedUsers.map((f) => f.followingId);
+
+    if (followingIds.length === 0) {
+      return {
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 0 },
+      };
+    }
+
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where: {
+          userId: { in: followingIds },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              avatar: true,
+              role: true,
+              nickname: true,
+            },
+          },
+          topic: { select: { title: true, slug: true } },
+          parent: { select: { title: true, slug: true } },
+          _count: {
+            select: { votes: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.post.count({
+        where: {
+          userId: { in: followingIds },
+        },
+      }),
+    ]);
+
+    return {
+      data: posts as PostEntity[],
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async findOne(id: number): Promise<PostEntity> {
     const post = await this.prisma.post.findUnique({
       where: { id },

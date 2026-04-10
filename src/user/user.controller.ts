@@ -2,7 +2,10 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Patch,
+  Query,
+  Req,
   Request,
   UseGuards,
   UseInterceptors,
@@ -21,6 +24,7 @@ import { mediaUploadOptions } from 'src/common/utils/media-upload.utils';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { Multer } from 'multer';
 import { CensorInterceptor } from 'src/common/censor/censor.interceptor';
+import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 @UseInterceptors(TransformInterceptor)
 @Controller('user')
 export class UserController {
@@ -28,9 +32,12 @@ export class UserController {
 
   @Get('public-profile/:username')
   @ResponseMessage('User found successfully.')
-  async publicProfile(@Request() req): Promise<UserResponseDto> {
+  async publicProfile(
+    @Request() req,
+  ): Promise<UserResponseDto & { isFollowing: boolean }> {
     return await this.userService.findOneByUsernameForPublicProfile(
       req.params.username,
+      req.user?.id,
     );
   }
 
@@ -109,5 +116,46 @@ export class UserController {
     @Body() user: updateUserDto.UpdateUserPasswordDto,
   ): Promise<UserResponseDto> {
     return await this.userService.updatePassword(Number(req.user.id), user);
+  }
+
+  @UseGuards(AuthenticatedGuard)
+  @Patch('toggle-follow')
+  @ResponseMessage('Follow status toggled successfully.')
+  async toggleFollow(
+    @Request() req,
+    @Body('followingId') followingId: number,
+  ): Promise<boolean> {
+    return await this.userService.toggleFollow(
+      Number(req.user.id),
+      followingId,
+    );
+  }
+
+  @Get(':username/followers')
+  async getFollowers(
+    @Param('username') username: string,
+    @Req() req: any,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return await this.userService.findFollowers(
+      username,
+      req.user?.id,
+      query.page || 1,
+      query.limit || 10,
+    );
+  }
+
+  @Get(':username/following')
+  async getFollowing(
+    @Param('username') username: string,
+    @Req() req: any,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return await this.userService.findFollowing(
+      username,
+      req.user?.id,
+      query.page || 1,
+      query.limit || 10,
+    );
   }
 }

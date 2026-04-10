@@ -41,9 +41,10 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const nodeEnv = configService.getOrThrow<string>('NODE_ENV');
+  const shouldTrustProxy = configService.get<boolean>('BEHIND_PROXY', false);
   const isProduction = nodeEnv === 'production';
 
-  if (isProduction) {
+  if (isProduction || shouldTrustProxy) {
     app.set('trust proxy', true);
   }
 
@@ -87,11 +88,12 @@ async function bootstrap() {
       cookie: {
         maxAge: 3600000 * 12, // 12 Hours
         httpOnly: true,
-        secure: isProduction,
+        secure: isProduction || shouldTrustProxy,
         sameSite: 'lax',
-        domain: isProduction
-          ? configService.getOrThrow<string>('PRODUCTION_URL')
-          : undefined,
+        domain:
+          isProduction || shouldTrustProxy
+            ? configService.getOrThrow<string>('PRODUCTION_URL')
+            : undefined,
       },
     }),
   );
