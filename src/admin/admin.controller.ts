@@ -218,7 +218,6 @@ export class AdminController {
   @ResponseMessage('Chat sessions fetched successfully.')
   async getChatSessions(@Query() paginationQueryDto: PaginationQueryDto) {
     const data = await this.adminService.getAllChatSessions(paginationQueryDto);
-    console.log(data);
     return data;
   }
 
