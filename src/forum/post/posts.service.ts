@@ -532,6 +532,8 @@ export class PostsService {
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         where: {
+          status: true,
+          topic: { status: true },
           userId: { in: followingIds },
         },
         include: {
@@ -557,6 +559,8 @@ export class PostsService {
       }),
       this.prisma.post.count({
         where: {
+          status: true,
+          topic: { status: true },
           userId: { in: followingIds },
         },
       }),
